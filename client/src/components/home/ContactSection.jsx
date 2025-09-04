@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Phone, MapPin, Send, CheckCircle } from 'lucide-react';
+import { Mail, Phone, MapPin, Send, CheckCircle, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +14,44 @@ const ContactSection = () => {
     message: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [colleges, setColleges] = useState([]);
+  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+
+  useEffect(() => {
+    fetchColleges();
+  }, []);
+
+  const fetchColleges = async () => {
+    try {
+      const response = await fetch('/api/college');
+      if (response.ok) {
+        const data = await response.json();
+        setColleges(data);
+      }
+    } catch (error) {
+      console.error('Error fetching colleges:', error);
+      // Fallback to default college data
+      const defaultCollege = {
+        _id: 'default',
+        name: 'Patan Multiple Campus',
+        address: 'Lalitpur, Nepal',
+        phone: '9816944639',
+        email: 'Adarshakd57@gmail.com',
+        website: 'https://patanmultiplecampus.edu.np'
+      };
+      setColleges([defaultCollege]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const scrollToMap = () => {
+    const mapElement = document.getElementById('interactive-map');
+    if (mapElement) {
+      mapElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
 
   const handleInputChange = (e) => {
     setFormData({
@@ -27,37 +64,84 @@ const ContactSection = () => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate form submission
-    setTimeout(() => {
-      toast({
-        title: "Message Sent!",
-        description: "Thank you for contacting us. We'll get back to you soon.",
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          message: `Subject: ${formData.subject}\n\n${formData.message}`
+        }),
       });
-      setFormData({ name: '', email: '', subject: '', message: '' });
+
+      if (response.ok) {
+        toast({
+          title: "Message Sent Successfully! ✅",
+          description: "Thank you for contacting us. We'll get back to you within 24 hours.",
+          variant: "default",
+        });
+        setFormData({ name: '', email: '', subject: '', message: '' });
+      } else {
+        const errorData = await response.json();
+        toast({
+          title: "Failed to Send Message",
+          description: errorData.message || "Please try again later.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        title: "Network Error",
+        description: "Please check your connection and try again.",
+        variant: "destructive",
+      });
+    } finally {
       setIsSubmitting(false);
-    }, 1000);
+    }
   };
 
-  const contactInfo = [
-    {
-      icon: Mail,
-      title: 'Email Us',
-      content: 'support@examsystem.com',
-      description: 'Send us an email anytime'
-    },
-    {
-      icon: Phone,
-      title: 'Call Us',
-      content: '+1 (555) 123-4567',
-      description: '24/7 support available'
-    },
-    {
-      icon: MapPin,
-      title: 'Visit Us',
-      content: '123 Education St, Tech City',
-      description: 'Our headquarters'
-    }
-  ];
+  const getContactInfo = () => {
+    const primaryCollege = colleges.length > 0 ? colleges[0] : null;
+    
+    return [
+      {
+        icon: Mail,
+        title: 'Email Us',
+        content: primaryCollege?.email || 'Adarshakd57@gmail.com',
+        description: 'Send us an email anytime',
+        isClickable: true,
+        onClick: () => {
+          const email = primaryCollege?.email || 'Adarshakd57@gmail.com';
+          window.open(`mailto:${email}?subject=Inquiry about Online Examination System`, '_self');
+          scrollToMap();
+        }
+      },
+      {
+        icon: Phone,
+        title: 'Call Us',
+        content: primaryCollege?.phone || '9816944639',
+        description: '24/7 support available',
+        isClickable: true,
+        onClick: () => {
+          const phone = primaryCollege?.phone || '9816944639';
+          window.open(`tel:${phone}`, '_self');
+          scrollToMap();
+        }
+      },
+      {
+        icon: MapPin,
+        title: 'Visit Us',
+        content: primaryCollege?.name || 'Patan Multiple Campus',
+        description: 'Click to view on map',
+        isClickable: true,
+        onClick: scrollToMap
+      }
+    ];
+  };
 
   return (
     <section id="contact" className="py-20 bg-gray-50">
@@ -189,26 +273,88 @@ const ContactSection = () => {
             </div>
 
             <div className="space-y-6">
-              {contactInfo.map((info, index) => (
+              {getContactInfo().map((info, index) => (
                 <motion.div
                   key={index}
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6, delay: index * 0.1 }}
                   viewport={{ once: true }}
-                  className="flex items-start space-x-4 p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-300"
+                  className={`flex items-start space-x-4 p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-all duration-300 ${
+                    info.isClickable ? 'cursor-pointer hover:bg-blue-50' : ''
+                  }`}
+                  onClick={info.onClick}
                 >
                   <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
                     <info.icon className="h-6 w-6 text-blue-600" />
                   </div>
-                  <div>
+                  <div className="flex-grow">
                     <h4 className="font-semibold text-gray-900 mb-1">{info.title}</h4>
-                    <p className="text-blue-600 font-medium mb-1">{info.content}</p>
+                    <p className={`font-medium mb-1 ${
+                      info.isClickable ? 'text-blue-600 hover:text-blue-800' : 'text-blue-600'
+                    }`}>
+                      {info.content}
+                    </p>
                     <p className="text-sm text-gray-600">{info.description}</p>
                   </div>
+                  {info.isClickable && (
+                    <div className="flex-shrink-0">
+                      <ExternalLink className="h-4 w-4 text-gray-400" />
+                    </div>
+                  )}
                 </motion.div>
               ))}
             </div>
+
+            {/* Multiple Colleges Section */}
+            {colleges.length > 1 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.4 }}
+                viewport={{ once: true }}
+                className="bg-white rounded-xl p-6 shadow-sm"
+              >
+                <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
+                  <MapPin className="h-5 w-5 text-blue-600 mr-2" />
+                  All Campus Locations
+                </h4>
+                <div className="space-y-3">
+                  {colleges.map((college, index) => (
+                    <motion.button
+                      key={college._id}
+                      onClick={() => {
+                        // Trigger college selection in LocationSection
+                        const event = new CustomEvent('selectCollege', { 
+                          detail: { college } 
+                        });
+                        window.dispatchEvent(event);
+                        scrollToMap();
+                      }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="w-full text-left p-3 rounded-lg bg-gray-50 hover:bg-blue-50 transition-all duration-200 flex items-center justify-between group shadow-sm hover:shadow-md"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-colors duration-200">
+                          <MapPin className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900 group-hover:text-blue-700 transition-colors duration-200">
+                            {college.name}
+                          </p>
+                          <p className="text-sm text-gray-600">{college.address}</p>
+                          {college.phone && (
+                            <p className="text-xs text-gray-500">📞 {college.phone}</p>
+                          )}
+                        </div>
+                      </div>
+                      <ExternalLink className="h-4 w-4 text-gray-400 group-hover:text-blue-600 transition-colors duration-200" />
+                    </motion.button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
 
             {/* FAQ Section */}
             <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6">

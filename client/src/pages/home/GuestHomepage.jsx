@@ -3,11 +3,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import Header from '../../components/home/Header';
-import HeroSection from '../../components/home/HeroSection';
-import AboutSection from '../../components/home/AboutSection';
-import FeaturesSection from '../../components/home/FeaturesSection';
-import TestimonialsSection from '../../components/home/TestimonialsSection';
-import ContactSection from '../../components/home/ContactSection';
+import HomePage from '../../components/home/HomePage';
 import Footer from '../../components/home/Footer';
 import AuthModal from '../../components/auth/AuthModal';
 import { checkAuth } from '../../store/authSlice';
@@ -62,11 +58,7 @@ const GuestHomepage = () => {
       <Header onOpenAuth={openAuthModal} />
       
       <main>
-        <HeroSection onOpenAuth={openAuthModal} />
-        <AboutSection />
-        <FeaturesSection />
-        <TestimonialsSection />
-        <ContactSection />
+        <HomePage onOpenAuth={openAuthModal} />
       </main>
 
       <Footer />

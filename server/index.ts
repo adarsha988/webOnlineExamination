@@ -2,7 +2,11 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 // @ts-ignore
+import connectDB from "./config/database.js";
+// @ts-ignore
 import { autoSeed } from "./data/seedData.js";
+// @ts-ignore
+import { seedMongoData } from "./data/mongoSeedData.js";
 
 const app = express();
 
@@ -85,7 +89,11 @@ app.use((req, res, next) => {
     reusePort: true,
   }, async () => {
     log(`serving on port ${port}`);
+    // Connect to MongoDB
+    await connectDB();
     // Auto-seed database with demo users
     await autoSeed();
+    // Seed MongoDB collections
+    await seedMongoData();
   });
 })();

@@ -1,55 +1,89 @@
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Star, Quote } from 'lucide-react';
+import { Star, Quote, Users } from 'lucide-react';
 
 const TestimonialsSection = () => {
-  const testimonials = [
+  const [testimonials, setTestimonials] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch testimonials from API
+  useEffect(() => {
+    fetchTestimonials();
+  }, []);
+
+  const fetchTestimonials = async () => {
+    try {
+      const response = await fetch('/api/testimonial');
+      if (response.ok) {
+        const data = await response.json();
+        setTestimonials(data);
+      } else {
+        // Fallback to sample testimonials if API fails
+        setTestimonials(sampleTestimonials);
+      }
+    } catch (error) {
+      console.error('Error fetching testimonials:', error);
+      setTestimonials(sampleTestimonials);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Sample testimonials as fallback
+  const sampleTestimonials = [
     {
       name: 'Dr. Sarah Johnson',
-      role: 'Professor of Computer Science',
-      institution: 'Stanford University',
-      content: 'ExamSystem has revolutionized how we conduct assessments. The AI-powered grading saves us hours of work while maintaining accuracy.',
-      rating: 5,
-      avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face'
+      designation: 'Professor of Computer Science',
+      company: 'Stanford University',
+      message: 'ExamSystem has revolutionized how we conduct assessments. The AI-powered grading saves us hours of work while maintaining accuracy.',
+      profileImage: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
+      linkedinUrl: 'https://linkedin.com/in/sarahjohnson',
+      universityUrl: 'https://stanford.edu'
     },
     {
       name: 'Michael Chen',
-      role: 'Training Director',
-      institution: 'TechCorp Solutions',
-      content: 'The analytics and reporting features give us incredible insights into our team\'s learning progress. Highly recommended!',
-      rating: 5,
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face'
+      designation: 'Training Director',
+      company: 'TechCorp Solutions',
+      message: 'The analytics and reporting features give us incredible insights into our team\'s learning progress. Highly recommended!',
+      profileImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face',
+      linkedinUrl: 'https://linkedin.com/in/michaelchen',
+      universityUrl: 'https://techcorp.com'
     },
     {
       name: 'Emily Rodriguez',
-      role: 'High School Principal',
-      institution: 'Lincoln Academy',
-      content: 'Our students love the intuitive interface, and teachers appreciate the comprehensive question bank and easy exam creation.',
-      rating: 5,
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face'
+      designation: 'High School Principal',
+      company: 'Lincoln Academy',
+      message: 'Our students love the intuitive interface, and teachers appreciate the comprehensive question bank and easy exam creation.',
+      profileImage: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face',
+      linkedinUrl: 'https://linkedin.com/in/emilyrodriguez',
+      universityUrl: 'https://lincolnacademy.edu'
     },
     {
       name: 'David Park',
-      role: 'Online Course Creator',
-      institution: 'EduTech Pro',
-      content: 'The mobile-friendly design and real-time monitoring have made remote assessments seamless for our global student base.',
-      rating: 5,
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face'
+      designation: 'Online Course Creator',
+      company: 'EduTech Pro',
+      message: 'The mobile-friendly design and real-time monitoring have made remote assessments seamless for our global student base.',
+      profileImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face',
+      linkedinUrl: 'https://linkedin.com/in/davidpark',
+      universityUrl: 'https://edutechpro.com'
     },
     {
       name: 'Lisa Thompson',
-      role: 'Department Head',
-      institution: 'Medical Training Institute',
-      content: 'Security features are top-notch. We can conduct high-stakes certification exams with complete confidence in the platform.',
-      rating: 5,
-      avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&h=150&fit=crop&crop=face'
+      designation: 'Department Head',
+      company: 'Medical Training Institute',
+      message: 'Security features are top-notch. We can conduct high-stakes certification exams with complete confidence in the platform.',
+      profileImage: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&h=150&fit=crop&crop=face',
+      linkedinUrl: 'https://linkedin.com/in/lisathompson',
+      universityUrl: 'https://medicaltraining.edu'
     },
     {
       name: 'James Wilson',
-      role: 'IT Administrator',
-      institution: 'Global University',
-      content: 'Implementation was smooth, and the 24/7 support team has been incredibly responsive. Great platform overall.',
-      rating: 5,
-      avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face'
+      designation: 'IT Administrator',
+      company: 'Global University',
+      message: 'Implementation was smooth, and the 24/7 support team has been incredibly responsive. Great platform overall.',
+      profileImage: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&h=150&fit=crop&crop=face',
+      linkedinUrl: 'https://linkedin.com/in/jameswilson',
+      universityUrl: 'https://globaluniversity.edu'
     }
   ];
 
@@ -89,20 +123,20 @@ const TestimonialsSection = () => {
               
               {/* Rating */}
               <div className="flex items-center mb-4">
-                {[...Array(testimonial.rating)].map((_, i) => (
+                {[...Array(5)].map((_, i) => (
                   <Star key={i} className="h-4 w-4 text-yellow-400 fill-current" />
                 ))}
               </div>
 
               {/* Content */}
               <p className="text-gray-700 mb-6 italic leading-relaxed">
-                "{testimonial.content}"
+                "{testimonial.message}"
               </p>
 
               {/* Author */}
               <div className="flex items-center">
                 <img
-                  src={testimonial.avatar}
+                  src={testimonial.profileImage}
                   alt={testimonial.name}
                   className="w-12 h-12 rounded-full object-cover mr-4"
                   onError={(e) => {
@@ -110,9 +144,33 @@ const TestimonialsSection = () => {
                   }}
                 />
                 <div>
-                  <h4 className="font-semibold text-gray-900">{testimonial.name}</h4>
-                  <p className="text-sm text-gray-600">{testimonial.role}</p>
-                  <p className="text-sm text-blue-600">{testimonial.institution}</p>
+                  {/* Clickable Name - LinkedIn */}
+                  {testimonial.linkedinUrl ? (
+                    <a
+                      href={testimonial.linkedinUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold text-blue-600 hover:text-blue-800 transition-colors duration-200 cursor-pointer hover:underline"
+                    >
+                      {testimonial.name}
+                    </a>
+                  ) : (
+                    <h4 className="font-semibold text-gray-900">{testimonial.name}</h4>
+                  )}
+                  <p className="text-sm text-gray-600">{testimonial.designation}</p>
+                  {/* Clickable University/Company */}
+                  {testimonial.universityUrl ? (
+                    <a
+                      href={testimonial.universityUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-600 hover:text-blue-800 transition-colors duration-200 cursor-pointer hover:underline"
+                    >
+                      {testimonial.company}
+                    </a>
+                  ) : (
+                    <p className="text-sm text-blue-600">{testimonial.company}</p>
+                  )}
                 </div>
               </div>
             </motion.div>
