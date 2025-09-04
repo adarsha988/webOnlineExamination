@@ -1,4 +1,5 @@
 import { storage } from '../storage.js';
+import bcrypt from 'bcrypt';
 
 // Seed data for demo purposes
 const seedUsers = [
@@ -203,7 +204,12 @@ export async function seedDatabase() {
     for (const userData of seedUsers) {
       const existingUser = await storage.getUserByEmail(userData.email);
       if (!existingUser) {
-        const user = await storage.createUser(userData);
+        // Hash the password before creating user
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(userData.password, saltRounds);
+        const userWithHashedPassword = { ...userData, password: hashedPassword };
+        
+        const user = await storage.createUser(userWithHashedPassword);
         createdUsers.push(user);
         console.log(`✅ Created user: ${user.name} (${user.role})`);
       } else {

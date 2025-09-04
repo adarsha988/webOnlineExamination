@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
 import { storage } from "./storage";
 import { authenticateToken, authorizeRole } from "./middleware/auth.js";
 import { gradeShortAnswers } from "./services/aiGrading.js";
@@ -20,8 +21,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'User already exists' });
       }
 
-      // Create user (Note: In production, hash the password with bcrypt)
-      const user = await storage.createUser({ email, password, name, role });
+      // Hash the password with bcrypt
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
+      
+      // Create user with hashed password
+      const user = await storage.createUser({ email, password: hashedPassword, name, role });
       
       // Generate JWT token
       const token = jwt.sign(
@@ -44,7 +49,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { email, password } = req.body;
       
       const user = await storage.getUserByEmail(email);
-      if (!user || user.password !== password) {
+      if (!user) {
+        return res.status(401).json({ message: 'Invalid credentials' });
+      }
+
+      // Compare password with bcrypt
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
         return res.status(401).json({ message: 'Invalid credentials' });
       }
 
@@ -66,6 +77,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/auth/me', authenticateToken, async (req, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
       const user = await storage.getUser(req.user.userId);
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
@@ -82,6 +96,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Exam routes
   app.get('/api/exams', authenticateToken, async (req, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
       const { role, userId } = req.user;
       let exams;
 
@@ -107,6 +124,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Exam not found' });
       }
 
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
       const { role, userId } = req.user;
       
       // Check permissions
@@ -129,7 +149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const examData = insertExamSchema.parse({
         ...req.body,
-        instructorId: req.user.userId
+        instructorId: req.user?.userId || ''
       });
       
       const exam = await storage.createExam(examData);
@@ -147,6 +167,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Exam not found' });
       }
 
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
       const { role, userId } = req.user;
       if (role === 'instructor' && exam.instructorId !== userId) {
         return res.status(403).json({ message: 'Access denied' });
@@ -167,6 +190,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Exam not found' });
       }
 
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
       const { role, userId } = req.user;
       if (role === 'instructor' && exam.instructorId !== userId) {
         return res.status(403).json({ message: 'Access denied' });
@@ -203,6 +229,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Exam not found' });
       }
 
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
       const { role, userId } = req.user;
       if (role === 'instructor' && exam.instructorId !== userId) {
         return res.status(403).json({ message: 'Access denied' });
@@ -245,6 +274,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/attempts', authenticateToken, authorizeRole(['student']), async (req, res) => {
     try {
       const { examId } = req.body;
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
       const { userId } = req.user;
 
       // Check if student is assigned to this exam
@@ -258,7 +290,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existingAttempt) {
         // Return existing attempt if not submitted
         if (!existingAttempt.submittedAt) {
-          const timeElapsed = Math.floor((Date.now() - new Date(existingAttempt.startedAt).getTime()) / 1000);
+          const timeElapsed = Math.floor((Date.now() - new Date(existingAttempt.startedAt || Date.now()).getTime()) / 1000);
           const timeRemaining = Math.max(0, (exam.duration * 60) - timeElapsed);
           
           const updatedAttempt = await storage.updateAttempt(existingAttempt.id, { timeRemaining });
@@ -290,7 +322,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { questionId, answer } = req.body;
       const attempt = await storage.getAttempt(req.params.id);
       
-      if (!attempt || attempt.studentId !== req.user.userId) {
+      if (!req.user || !attempt || attempt.studentId !== req.user.userId) {
         return res.status(403).json({ message: 'Access denied' });
       }
 
@@ -299,7 +331,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Update answer in attempt
-      const updatedAnswers = { ...attempt.answers, [questionId]: answer };
+      const updatedAnswers = { ...(attempt.answers || {}), [questionId]: answer };
       const updatedAttempt = await storage.updateAttempt(req.params.id, {
         answers: updatedAnswers
       });
@@ -315,7 +347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const attempt = await storage.getAttempt(req.params.id);
       
-      if (!attempt || attempt.studentId !== req.user.userId) {
+      if (!req.user || !attempt || attempt.studentId !== req.user.userId) {
         return res.status(403).json({ message: 'Access denied' });
       }
 
@@ -330,11 +362,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Grade the attempt
       let totalScore = 0;
       let maxScore = 0;
-      const feedback = {};
+      const feedback: Record<string, { score: number; explanation: string }> = {};
 
       for (const question of questions) {
         maxScore += question.points;
-        const userAnswer = attempt.answers[question.id];
+        const userAnswer = (attempt.answers as Record<string, any>)?.[question.id];
         
         if (!userAnswer) {
           feedback[question.id] = {
@@ -363,7 +395,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             marks: question.points
           }]);
           
-          const aiResult = aiResults.find(r => r.qId === question.id);
+          const aiResult = aiResults.find((r: any) => r.qId === question.id);
           if (aiResult) {
             questionScore = aiResult.score;
             explanation = aiResult.explanation;
@@ -400,6 +432,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Results routes
   app.get('/api/results/me', authenticateToken, authorizeRole(['student']), async (req, res) => {
     try {
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
       const attempts = await storage.getAttemptsByStudent(req.user.userId);
       
       // Enhance with exam details
@@ -434,6 +469,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Result not found' });
       }
 
+      if (!req.user) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
       const { role, userId } = req.user;
       
       // Check permissions

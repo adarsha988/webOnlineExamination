@@ -23,15 +23,27 @@ const Login = () => {
   });
 
   useEffect(() => {
+    console.log('🔄 LOGIN COMPONENT - Auth state changed:', { 
+      isAuthenticated, 
+      user, 
+      userRole: user?.role 
+    });
+    
     if (isAuthenticated && user) {
+      console.log('🚀 REDIRECTING USER - Role:', user.role);
       // Redirect based on user role
       if (user.role === 'admin') {
+        console.log('👑 Redirecting to admin dashboard');
         setLocation('/admin/dashboard');
       } else if (user.role === 'instructor') {
+        console.log('👨‍🏫 Redirecting to instructor dashboard');
         setLocation('/instructor/dashboard');
       } else {
+        console.log('👨‍🎓 Redirecting to student dashboard');
         setLocation('/student/dashboard');
       }
+    } else {
+      console.log('❌ No redirect - isAuthenticated:', isAuthenticated, 'user:', !!user);
     }
   }, [isAuthenticated, user, setLocation]);
 
@@ -56,6 +68,7 @@ const Login = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    console.log('📝 FORM SUBMITTED:', { email: formData.email, password: '***' });
     dispatch(loginUser({
       email: formData.email,
       password: formData.password,

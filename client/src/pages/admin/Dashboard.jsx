@@ -4,7 +4,7 @@ import { Users, User, GraduationCap, FileText, TrendingUp, Server, UserPlus, Dow
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AdminLayout from '../../layouts/AdminLayout';
-import api from '../../api/axios';
+import { apiRequest } from '../../api/axios';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
@@ -32,16 +32,18 @@ const AdminDashboard = () => {
       setIsLoading(true);
       
       // Fetch admin reports
-      const reportsResponse = await api.get('/admin/reports');
+      const reportsResponse = await apiRequest('GET', '/api/admin/reports');
+      const reportsData = await reportsResponse.json();
       setStats({
-        ...reportsResponse.data,
+        ...reportsData,
         activeToday: Math.floor(Math.random() * 200) + 50, // Mock active today
         systemLoad: Math.floor(Math.random() * 30) + 60, // Mock system load
       });
 
       // Fetch users
-      const usersResponse = await api.get('/admin/users');
-      setUsers(usersResponse.data.slice(0, 5)); // Show only recent 5 users
+      const usersResponse = await apiRequest('GET', '/api/admin/users');
+      const usersData = await usersResponse.json();
+      setUsers(usersData.slice(0, 5)); // Show only recent 5 users
 
       // Mock recent activity
       setRecentActivity([
@@ -315,7 +317,7 @@ const AdminDashboard = () => {
               </div>
               
               <div className="text-center p-6 border border-border rounded-lg">
-                <UserGraduate className="h-12 w-12 text-secondary mx-auto mb-3" />
+                <GraduationCap className="h-12 w-12 text-secondary mx-auto mb-3" />
                 <h3 className="text-lg font-semibold text-foreground mb-2">Academic Performance</h3>
                 <p className="text-sm text-muted-foreground mb-4">
                   Student performance metrics and analytics

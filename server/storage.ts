@@ -9,6 +9,17 @@ import {
   type InsertAttempt
 } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { promises as fs } from 'fs';
+import path from 'path';
+
+interface StorageData {
+  users: User[];
+  exams: Exam[];
+  questions: Question[];
+  attempts: Attempt[];
+}
+
+const STORAGE_FILE = path.join(process.cwd(), 'data', 'storage.json');
 
 export interface IStorage {
   // Users
@@ -50,12 +61,55 @@ export class MemStorage implements IStorage {
   private exams: Map<string, Exam>;
   private questions: Map<string, Question>;
   private attempts: Map<string, Attempt>;
+  private saveTimeout: NodeJS.Timeout | null = null;
 
   constructor() {
     this.users = new Map();
     this.exams = new Map();
     this.questions = new Map();
     this.attempts = new Map();
+    this.loadData().catch(console.error);
+  }
+
+  private async loadData() {
+    try {
+      await fs.mkdir(path.dirname(STORAGE_FILE), { recursive: true });
+      const data = await fs.readFile(STORAGE_FILE, 'utf-8');
+      const { users = [], exams = [], questions = [], attempts = [] } = JSON.parse(data) as StorageData;
+      
+      this.users = new Map(users.map(user => [user.id, user]));
+      this.exams = new Map(exams.map(exam => [exam.id, exam]));
+      this.questions = new Map(questions.map(question => [question.id, question]));
+      this.attempts = new Map(attempts.map(attempt => [attempt.id, attempt]));
+    } catch (error) {
+      if (error.code !== 'ENOENT') {
+        console.error('Failed to load storage:', error);
+      }
+    }
+  }
+
+  private async saveData() {
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+    }
+    
+    this.saveTimeout = setTimeout(async () => {
+      try {
+        const data: StorageData = {
+          users: Array.from(this.users.values()),
+          exams: Array.from(this.exams.values()),
+          questions: Array.from(this.questions.values()),
+          attempts: Array.from(this.attempts.values())
+        };
+        
+        await fs.mkdir(path.dirname(STORAGE_FILE), { recursive: true });
+        await fs.writeFile(STORAGE_FILE, JSON.stringify(data, null, 2), 'utf-8');
+      } catch (error) {
+        console.error('Failed to save storage:', error);
+      } finally {
+        this.saveTimeout = null;
+      }
+    }, 1000); // Debounce saves to disk
   }
 
   // Users
@@ -71,10 +125,12 @@ export class MemStorage implements IStorage {
     const id = randomUUID();
     const user: User = {
       ...insertUser,
+      role: insertUser.role || 'student',
       id,
       createdAt: new Date(),
     };
     this.users.set(id, user);
+    await this.saveData();
     return user;
   }
 
@@ -84,11 +140,16 @@ export class MemStorage implements IStorage {
     
     const updatedUser = { ...user, ...userData };
     this.users.set(id, updatedUser);
+    await this.saveData();
     return updatedUser;
   }
 
   async deleteUser(id: string): Promise<boolean> {
-    return this.users.delete(id);
+    const result = this.users.delete(id);
+    if (result) {
+      await this.saveData();
+    }
+    return result;
   }
 
   async getAllUsers(): Promise<User[]> {
@@ -108,6 +169,8 @@ export class MemStorage implements IStorage {
     const id = randomUUID();
     const exam: Exam = {
       ...insertExam,
+      description: insertExam.description || null,
+      scheduledDate: insertExam.scheduledDate || null,
       id,
       status: 'draft',
       assignedStudents: [],
@@ -153,6 +216,11 @@ export class MemStorage implements IStorage {
     const id = randomUUID();
     const question: Question = {
       ...insertQuestion,
+      points: insertQuestion.points || 1,
+      description: insertQuestion.description || null,
+      options: insertQuestion.options || null,
+      correctAnswer: insertQuestion.correctAnswer || null,
+      sampleAnswers: insertQuestion.sampleAnswers || null,
       id,
     };
     this.questions.set(id, question);
@@ -213,7 +281,7 @@ export class MemStorage implements IStorage {
   async getAttemptsByStudent(studentId: string): Promise<Attempt[]> {
     return Array.from(this.attempts.values())
       .filter(attempt => attempt.studentId === studentId)
-      .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
+      .sort((a, b) => new Date(b.startedAt || Date.now()).getTime() - new Date(a.startedAt || Date.now()).getTime());
   }
 
   async getAttemptsByExam(examId: string): Promise<Attempt[]> {

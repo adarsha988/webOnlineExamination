@@ -1,8 +1,21 @@
 // AI Grading Service for Online Examination System
 // Supports both mock grading for demo and real OpenAI integration
 
+interface GradingItem {
+  qId: string;
+  value: string;
+  sampleAnswers: string[];
+  marks: number;
+}
+
+interface GradingResult {
+  qId: string;
+  score: number;
+  explanation: string;
+}
+
 // Mock grading function for demo purposes
-function mockGradeShortAnswers(items) {
+function mockGradeShortAnswers(items: GradingItem[]): GradingResult[] {
   return items.map(item => {
     const { qId, value, sampleAnswers, marks } = item;
     
@@ -70,7 +83,7 @@ function mockGradeShortAnswers(items) {
 }
 
 // Real OpenAI grading function
-async function openaiGradeShortAnswers(items) {
+async function openaiGradeShortAnswers(items: GradingItem[]): Promise<GradingResult[]> {
   const openaiApiKey = process.env.OPENAI_API_KEY;
   
   if (!openaiApiKey) {
@@ -124,14 +137,14 @@ ${JSON.stringify(items, null, 2)}`;
       max_tokens: 2000
     });
 
-    const result = JSON.parse(response.choices[0].message.content);
+    const result = JSON.parse(response.choices[0].message.content || '[]');
     
     // Ensure the result is an array and validate structure
     const gradedItems = Array.isArray(result) ? result : result.grades || result.results || [];
     
     // Validate and sanitize the results
     return items.map(item => {
-      const aiResult = gradedItems.find(r => r.qId === item.qId);
+      const aiResult = gradedItems.find((r: any) => r.qId === item.qId);
       
       if (!aiResult) {
         console.warn(`No AI result found for question ${item.qId}, using fallback`);
@@ -148,14 +161,14 @@ ${JSON.stringify(items, null, 2)}`;
       };
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('OpenAI grading failed, falling back to mock grading:', error.message);
     return mockGradeShortAnswers(items);
   }
 }
 
 // Main grading function - switch between mock and real AI
-export async function gradeShortAnswers(items) {
+export async function gradeShortAnswers(items: GradingItem[]): Promise<GradingResult[]> {
   // Check if we should use real AI grading
   const useRealAI = process.env.OPENAI_API_KEY && process.env.USE_AI_GRADING !== 'false';
   

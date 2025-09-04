@@ -6,12 +6,19 @@ export const loginUser = createAsyncThunk(
   'auth/login',
   async ({ email, password }, { rejectWithValue }) => {
     try {
+      console.log('🔐 LOGIN ATTEMPT:', { email, password: '***' });
       const response = await apiRequest('POST', '/api/auth/login', { email, password });
+      console.log('📡 LOGIN RESPONSE STATUS:', response.status);
+      
       const data = await response.json();
+      console.log('📦 LOGIN RESPONSE DATA:', data);
+      
       const { user, token } = data;
       localStorage.setItem('token', token);
+      console.log('✅ LOGIN SUCCESS - User:', user, 'Token stored:', !!token);
       return { user, token };
     } catch (error) {
+      console.error('❌ LOGIN ERROR:', error);
       return rejectWithValue(error.message || 'Login failed');
     }
   }
@@ -49,6 +56,18 @@ export const checkAuth = createAsyncThunk(
   }
 );
 
+// Logout async thunk - always succeeds for smooth UX
+export const logoutUser = createAsyncThunk(
+  'auth/logout',
+  async () => {
+    // Clear token from localStorage
+    localStorage.removeItem('token');
+    
+    // Always return success - no need to call server for logout
+    return { success: true };
+  }
+);
+
 const initialState = {
   user: null,
   token: localStorage.getItem('token'),
@@ -76,17 +95,25 @@ const authSlice = createSlice({
     builder
       // Login
       .addCase(loginUser.pending, (state) => {
+        console.log('⏳ LOGIN PENDING - Setting loading state');
         state.isLoading = true;
         state.error = null;
       })
       .addCase(loginUser.fulfilled, (state, action) => {
+        console.log('🎉 LOGIN FULFILLED - Redux state update:', action.payload);
         state.isLoading = false;
         state.user = action.payload.user;
         state.token = action.payload.token;
         state.isAuthenticated = true;
         state.error = null;
+        console.log('📊 NEW AUTH STATE:', { 
+          isAuthenticated: state.isAuthenticated, 
+          user: state.user,
+          hasToken: !!state.token 
+        });
       })
       .addCase(loginUser.rejected, (state, action) => {
+        console.log('💥 LOGIN REJECTED:', action.payload);
         state.isLoading = false;
         state.error = action.payload;
         state.isAuthenticated = false;
@@ -125,6 +152,17 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.user = null;
         state.token = null;
+      })
+      // Logout
+      .addCase(logoutUser.pending, (state) => {
+        state.isLoading = true;
+      })
+      .addCase(logoutUser.fulfilled, (state) => {
+        state.isLoading = false;
+        state.user = null;
+        state.token = null;
+        state.isAuthenticated = false;
+        state.error = null;
       });
   },
 });

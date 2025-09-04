@@ -1,0 +1,1418 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Online Examination System - Comprehensive Design Mockup</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                borderRadius: {
+                    lg: "var(--radius)",
+                    md: "calc(var(--radius) - 2px)",
+                    sm: "calc(var(--radius) - 4px)",
+                },
+                colors: {
+                    background: "var(--background)",
+                    foreground: "var(--foreground)",
+                    card: {
+                        DEFAULT: "var(--card)",
+                        foreground: "var(--card-foreground)",
+                    },
+                    popover: {
+                        DEFAULT: "var(--popover)",
+                        foreground: "var(--popover-foreground)",
+                    },
+                    primary: {
+                        DEFAULT: "var(--primary)",
+                        foreground: "var(--primary-foreground)",
+                    },
+                    secondary: {
+                        DEFAULT: "var(--secondary)",
+                        foreground: "var(--secondary-foreground)",
+                    },
+                    muted: {
+                        DEFAULT: "var(--muted)",
+                        foreground: "var(--muted-foreground)",
+                    },
+                    accent: {
+                        DEFAULT: "var(--accent)",
+                        foreground: "var(--accent-foreground)",
+                    },
+                    destructive: {
+                        DEFAULT: "var(--destructive)",
+                        foreground: "var(--destructive-foreground)",
+                    },
+                    border: "var(--border)",
+                    input: "var(--input)",
+                    ring: "var(--ring)",
+                    chart: {
+                        "1": "var(--chart-1)",
+                        "2": "var(--chart-2)",
+                        "3": "var(--chart-3)",
+                        "4": "var(--chart-4)",
+                        "5": "var(--chart-5)",
+                    }
+                },
+                fontFamily: {
+                    sans: ["var(--font-sans)"],
+                    serif: ["var(--font-serif)"],
+                    mono: ["var(--font-mono)"],
+                }
+            },
+        }
+    };
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --background: hsl(210 40% 98%);
+            --foreground: hsl(215 25% 15%);
+            --card: hsl(0 0% 100%);
+            --card-foreground: hsl(215 25% 15%);
+            --popover: hsl(0 0% 100%);
+            --popover-foreground: hsl(215 25% 15%);
+            --primary: hsl(217 91% 60%);
+            --primary-foreground: hsl(0 0% 100%);
+            --secondary: hsl(158 64% 52%);
+            --secondary-foreground: hsl(0 0% 100%);
+            --muted: hsl(210 40% 96%);
+            --muted-foreground: hsl(215 13% 65%);
+            --accent: hsl(43 96% 56%);
+            --accent-foreground: hsl(215 25% 15%);
+            --destructive: hsl(0 84% 60%);
+            --destructive-foreground: hsl(0 0% 100%);
+            --border: hsl(214 32% 91%);
+            --input: hsl(214 32% 91%);
+            --ring: hsl(217 91% 60%);
+            --radius: 8px;
+            --chart-1: hsl(217 91% 60%);
+            --chart-2: hsl(158 64% 52%);
+            --chart-3: hsl(43 96% 56%);
+            --chart-4: hsl(280 65% 60%);
+            --chart-5: hsl(12 76% 61%);
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        body {
+            font-family: var(--font-sans);
+        }
+        
+        .view-section {
+            display: none;
+        }
+        
+        .view-section.active {
+            display: block;
+        }
+        
+        .timer-pulse {
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+        
+        .card-hover {
+            transition: all 0.2s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px -8px rgba(0, 0, 0, 0.15);
+        }
+    </style>
+</head>
+<body class="bg-background text-foreground min-h-screen">
+    <!-- Navigation Bar -->
+    <nav class="bg-card border-b border-border shadow-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-graduation-cap text-primary text-2xl"></i>
+                        <h1 class="text-xl font-bold text-foreground">ExamSystem</h1>
+                    </div>
+                    <div class="hidden md:flex items-center space-x-1 bg-muted rounded-lg p-1">
+                        <button class="nav-btn px-3 py-2 text-sm font-medium rounded-md bg-primary text-primary-foreground" data-view="login">Login</button>
+                        <button class="nav-btn px-3 py-2 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground" data-view="student-dashboard">Student</button>
+                        <button class="nav-btn px-3 py-2 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground" data-view="exam-interface">Take Exam</button>
+                        <button class="nav-btn px-3 py-2 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground" data-view="instructor-dashboard">Instructor</button>
+                        <button class="nav-btn px-3 py-2 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground" data-view="admin-dashboard">Admin</button>
+                        <button class="nav-btn px-3 py-2 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground" data-view="results">Results</button>
+                    </div>
+                </div>
+                <div class="hidden md:flex items-center space-x-4">
+                    <div class="flex items-center space-x-2 text-sm text-muted-foreground">
+                        <i class="fas fa-user-circle"></i>
+                        <span data-mock="true">John Doe</span>
+                    </div>
+                    <button class="text-sm text-muted-foreground hover:text-foreground">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Login/Authentication View -->
+    <!-- @COMPONENT: LoginForm [handles authentication] -->
+    <div id="login" class="view-section active">
+        <div class="min-h-screen bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+            <div class="max-w-md w-full space-y-8">
+                <div class="text-center">
+                    <i class="fas fa-graduation-cap text-primary text-6xl mb-4"></i>
+                    <h2 class="text-3xl font-bold text-foreground">Online Examination System</h2>
+                    <p class="mt-2 text-sm text-muted-foreground">Sign in to access your dashboard</p>
+                </div>
+                <div class="bg-card rounded-lg shadow-lg p-8 border border-border">
+                    <form class="space-y-6" data-implementation="Should validate credentials and redirect based on role">
+                        <div>
+                            <label for="email" class="block text-sm font-medium text-foreground">Email address</label>
+                            <input 
+                                id="email" 
+                                type="email" 
+                                required 
+                                class="mt-1 block w-full px-3 py-2 border border-input rounded-md shadow-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
+                                placeholder="Enter your email"
+                                data-mock="true"
+                                value="stu1@example.com"
+                            >
+                        </div>
+                        <div>
+                            <label for="password" class="block text-sm font-medium text-foreground">Password</label>
+                            <input 
+                                id="password" 
+                                type="password" 
+                                required 
+                                class="mt-1 block w-full px-3 py-2 border border-input rounded-md shadow-sm placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
+                                placeholder="Enter your password"
+                                data-mock="true"
+                                value="stu123"
+                            >
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center">
+                                <input 
+                                    id="remember-me" 
+                                    type="checkbox" 
+                                    class="h-4 w-4 text-primary focus:ring-ring border-input rounded"
+                                >
+                                <label for="remember-me" class="ml-2 block text-sm text-foreground">
+                                    Remember me
+                                </label>
+                            </div>
+                            <a href="#" class="text-sm text-primary hover:text-primary/80">
+                                Forgot password?
+                            </a>
+                        </div>
+                        <button 
+                            type="submit" 
+                            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring"
+                            data-event="click:handleLogin"
+                        >
+                            Sign in
+                        </button>
+                    </form>
+                    <div class="mt-6">
+                        <div class="relative">
+                            <div class="absolute inset-0 flex items-center">
+                                <div class="w-full border-t border-border"></div>
+                            </div>
+                            <div class="relative flex justify-center text-sm">
+                                <span class="px-2 bg-card text-muted-foreground">Demo Accounts</span>
+                            </div>
+                        </div>
+                        <div class="mt-4 grid grid-cols-3 gap-2 text-xs">
+                            <div class="text-center p-2 bg-muted rounded">
+                                <div class="font-medium">Student</div>
+                                <div class="text-muted-foreground">stu1@example.com</div>
+                                <div class="text-muted-foreground">stu123</div>
+                            </div>
+                            <div class="text-center p-2 bg-muted rounded">
+                                <div class="font-medium">Instructor</div>
+                                <div class="text-muted-foreground">inst@example.com</div>
+                                <div class="text-muted-foreground">inst123</div>
+                            </div>
+                            <div class="text-center p-2 bg-muted rounded">
+                                <div class="font-medium">Admin</div>
+                                <div class="text-muted-foreground">admin@example.com</div>
+                                <div class="text-muted-foreground">admin123</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: LoginForm -->
+
+    <!-- Student Dashboard View -->
+    <!-- @COMPONENT: StudentDashboard [displays assigned exams and history] -->
+    <div id="student-dashboard" class="view-section">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Welcome Header -->
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold text-foreground">Welcome back, <span data-bind="user.name" data-mock="true">John Doe</span></h1>
+                <p class="text-muted-foreground">Here are your upcoming and completed examinations</p>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-card rounded-lg border border-border p-6 shadow-sm">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-clock text-accent text-2xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-muted-foreground">Upcoming</p>
+                            <p class="text-2xl font-bold text-foreground" data-bind="stats.upcoming" data-mock="true">3</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-card rounded-lg border border-border p-6 shadow-sm">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-check-circle text-secondary text-2xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-muted-foreground">Completed</p>
+                            <p class="text-2xl font-bold text-foreground" data-bind="stats.completed" data-mock="true">8</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-card rounded-lg border border-border p-6 shadow-sm">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-percentage text-primary text-2xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-muted-foreground">Avg Score</p>
+                            <p class="text-2xl font-bold text-foreground" data-bind="stats.avgScore" data-mock="true">87%</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-card rounded-lg border border-border p-6 shadow-sm">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-trophy text-accent text-2xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-muted-foreground">Best Score</p>
+                            <p class="text-2xl font-bold text-foreground" data-bind="stats.bestScore" data-mock="true">96%</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upcoming Exams -->
+            <div class="mb-8">
+                <h2 class="text-xl font-semibold text-foreground mb-4">Upcoming Examinations</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- @MAP: upcomingExams.map(exam => ( -->
+                    <div class="bg-card rounded-lg border border-border p-6 shadow-sm card-hover">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="text-lg font-semibold text-foreground" data-bind="exam.title" data-mock="true">Mathematics Final Exam</h3>
+                                <p class="text-sm text-muted-foreground" data-bind="exam.subject" data-mock="true">Advanced Calculus</p>
+                            </div>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent/10 text-accent">
+                                Upcoming
+                            </span>
+                        </div>
+                        <div class="space-y-2 mb-4">
+                            <div class="flex items-center text-sm text-muted-foreground">
+                                <i class="fas fa-calendar mr-2"></i>
+                                <span data-bind="exam.date" data-mock="true">March 15, 2024 at 10:00 AM</span>
+                            </div>
+                            <div class="flex items-center text-sm text-muted-foreground">
+                                <i class="fas fa-clock mr-2"></i>
+                                <span data-bind="exam.duration" data-mock="true">120 minutes</span>
+                            </div>
+                            <div class="flex items-center text-sm text-muted-foreground">
+                                <i class="fas fa-question-circle mr-2"></i>
+                                <span data-bind="exam.questionCount" data-mock="true">25 questions</span>
+                            </div>
+                        </div>
+                        <button class="w-full bg-primary text-primary-foreground py-2 px-4 rounded-md hover:bg-primary/90 transition-colors font-medium">
+                            Start Exam
+                        </button>
+                    </div>
+                    
+                    <div class="bg-card rounded-lg border border-border p-6 shadow-sm card-hover">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="text-lg font-semibold text-foreground" data-mock="true">Physics Midterm</h3>
+                                <p class="text-sm text-muted-foreground" data-mock="true">Quantum Mechanics</p>
+                            </div>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent/10 text-accent">
+                                Upcoming
+                            </span>
+                        </div>
+                        <div class="space-y-2 mb-4">
+                            <div class="flex items-center text-sm text-muted-foreground">
+                                <i class="fas fa-calendar mr-2"></i>
+                                <span data-mock="true">March 18, 2024 at 2:00 PM</span>
+                            </div>
+                            <div class="flex items-center text-sm text-muted-foreground">
+                                <i class="fas fa-clock mr-2"></i>
+                                <span data-mock="true">90 minutes</span>
+                            </div>
+                            <div class="flex items-center text-sm text-muted-foreground">
+                                <i class="fas fa-question-circle mr-2"></i>
+                                <span data-mock="true">20 questions</span>
+                            </div>
+                        </div>
+                        <button class="w-full bg-primary text-primary-foreground py-2 px-4 rounded-md hover:bg-primary/90 transition-colors font-medium">
+                            Start Exam
+                        </button>
+                    </div>
+                    <!-- @END_MAP )) -->
+                </div>
+            </div>
+
+            <!-- Recent Results -->
+            <div>
+                <h2 class="text-xl font-semibold text-foreground mb-4">Recent Results</h2>
+                <div class="bg-card rounded-lg border border-border shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-border">
+                            <thead class="bg-muted">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Exam</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Date</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Score</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Grade</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-card divide-y divide-border">
+                                <!-- @MAP: recentResults.map(result => ( -->
+                                <tr class="hover:bg-muted/50">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div>
+                                            <div class="text-sm font-medium text-foreground" data-bind="result.examTitle" data-mock="true">Computer Science Quiz</div>
+                                            <div class="text-sm text-muted-foreground" data-bind="result.subject" data-mock="true">Data Structures</div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground" data-bind="result.date" data-mock="true">
+                                        March 10, 2024
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="text-sm font-medium text-foreground" data-bind="result.score" data-mock="true">92%</span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary/10 text-secondary">
+                                            A
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        <button class="text-primary hover:text-primary/80 font-medium">View Details</button>
+                                    </td>
+                                </tr>
+                                
+                                <tr class="hover:bg-muted/50">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div>
+                                            <div class="text-sm font-medium text-foreground" data-mock="true">History Essay</div>
+                                            <div class="text-sm text-muted-foreground" data-mock="true">World War II</div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground" data-mock="true">
+                                        March 8, 2024
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="text-sm font-medium text-foreground" data-mock="true">85%</span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary/10 text-secondary">
+                                            B+
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                        <button class="text-primary hover:text-primary/80 font-medium">View Details</button>
+                                    </td>
+                                </tr>
+                                <!-- @END_MAP )) -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: StudentDashboard -->
+
+    <!-- Exam Taking Interface -->
+    <!-- @COMPONENT: ExamInterface [timer, questions, navigation] -->
+    <div id="exam-interface" class="view-section">
+        <div class="min-h-screen bg-background">
+            <!-- Exam Header with Timer -->
+            <div class="bg-card border-b border-border shadow-sm sticky top-0 z-40">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="flex justify-between items-center py-4">
+                        <div>
+                            <h1 class="text-lg font-semibold text-foreground" data-bind="exam.title" data-mock="true">Mathematics Final Exam</h1>
+                            <p class="text-sm text-muted-foreground">Question <span data-bind="currentQuestion" data-mock="true">5</span> of <span data-bind="totalQuestions" data-mock="true">25</span></p>
+                        </div>
+                        <div class="flex items-center space-x-6">
+                            <!-- @COMPONENT: Timer [countdown with auto-submit] -->
+                            <div class="flex items-center space-x-2 bg-destructive/10 text-destructive px-4 py-2 rounded-lg timer-pulse">
+                                <i class="fas fa-clock"></i>
+                                <span class="font-mono text-lg font-semibold" data-bind="timeRemaining" data-mock="true">01:25:30</span>
+                            </div>
+                            <!-- @END_COMPONENT: Timer -->
+                            <button class="bg-accent text-accent-foreground px-4 py-2 rounded-md hover:bg-accent/90 transition-colors">
+                                <i class="fas fa-save mr-2"></i>Save & Exit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    <!-- Question Navigator -->
+                    <!-- @COMPONENT: QuestionNavigator [question status overview] -->
+                    <div class="lg:col-span-1">
+                        <div class="bg-card rounded-lg border border-border p-4 shadow-sm sticky top-24">
+                            <h3 class="text-sm font-semibold text-foreground mb-4">Question Navigator</h3>
+                            <div class="grid grid-cols-5 gap-2">
+                                <!-- @MAP: questions.map((q, index) => ( -->
+                                <button class="w-8 h-8 text-xs font-medium rounded border-2 border-primary bg-primary text-primary-foreground" data-question="1">1</button>
+                                <button class="w-8 h-8 text-xs font-medium rounded border-2 border-secondary bg-secondary text-secondary-foreground" data-question="2">2</button>
+                                <button class="w-8 h-8 text-xs font-medium rounded border-2 border-secondary bg-secondary text-secondary-foreground" data-question="3">3</button>
+                                <button class="w-8 h-8 text-xs font-medium rounded border-2 border-secondary bg-secondary text-secondary-foreground" data-question="4">4</button>
+                                <button class="w-8 h-8 text-xs font-medium rounded border-2 border-accent bg-accent text-accent-foreground" data-question="5">5</button>
+                                <button class="w-8 h-8 text-xs font-medium rounded border-2 border-border bg-card text-foreground hover:bg-muted" data-question="6">6</button>
+                                <button class="w-8 h-8 text-xs font-medium rounded border-2 border-border bg-card text-foreground hover:bg-muted" data-question="7">7</button>
+                                <button class="w-8 h-8 text-xs font-medium rounded border-2 border-border bg-card text-foreground hover:bg-muted" data-question="8">8</button>
+                                <button class="w-8 h-8 text-xs font-medium rounded border-2 border-border bg-card text-foreground hover:bg-muted" data-question="9">9</button>
+                                <button class="w-8 h-8 text-xs font-medium rounded border-2 border-border bg-card text-foreground hover:bg-muted" data-question="10">10</button>
+                                <!-- @END_MAP )) -->
+                            </div>
+                            <div class="mt-4 space-y-2 text-xs">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-3 h-3 rounded border-2 border-primary bg-primary"></div>
+                                    <span class="text-muted-foreground">Current</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-3 h-3 rounded border-2 border-secondary bg-secondary"></div>
+                                    <span class="text-muted-foreground">Answered</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-3 h-3 rounded border-2 border-accent bg-accent"></div>
+                                    <span class="text-muted-foreground">Marked</span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-3 h-3 rounded border-2 border-border bg-card"></div>
+                                    <span class="text-muted-foreground">Not Answered</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- @END_COMPONENT: QuestionNavigator -->
+
+                    <!-- Question Content -->
+                    <!-- @COMPONENT: QuestionRenderer [displays current question based on type] -->
+                    <div class="lg:col-span-3">
+                        <div class="bg-card rounded-lg border border-border p-6 shadow-sm">
+                            <div class="mb-6">
+                                <div class="flex justify-between items-start mb-4">
+                                    <h2 class="text-lg font-semibold text-foreground">Question 5</h2>
+                                    <div class="flex items-center space-x-2">
+                                        <span class="text-sm text-muted-foreground">Points: 
+                                            <span class="font-medium text-foreground" data-bind="question.points" data-mock="true">5</span>
+                                        </span>
+                                        <button class="text-accent hover:text-accent/80">
+                                            <i class="fas fa-bookmark"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="prose prose-sm max-w-none">
+                                    <p class="text-foreground" data-bind="question.text" data-mock="true">
+                                        Solve the following definite integral: ∫₀² (3x² + 2x - 1) dx
+                                    </p>
+                                    <p class="text-sm text-muted-foreground mt-2">
+                                        Show your work and provide the exact numerical answer.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Question Type: Short Answer -->
+                            <div class="space-y-4">
+                                <label class="block text-sm font-medium text-foreground">Your Answer:</label>
+                                <textarea 
+                                    class="w-full px-3 py-3 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring resize-none"
+                                    rows="6"
+                                    placeholder="Enter your detailed answer here..."
+                                    data-bind="answer.value"
+                                    data-implementation="Should auto-save answers as user types"
+                                ></textarea>
+                            </div>
+
+                            <!-- Navigation Buttons -->
+                            <div class="flex justify-between items-center mt-8 pt-6 border-t border-border">
+                                <button class="flex items-center px-4 py-2 text-muted-foreground hover:text-foreground transition-colors">
+                                    <i class="fas fa-chevron-left mr-2"></i>Previous
+                                </button>
+                                <div class="flex space-x-3">
+                                    <button class="px-4 py-2 border border-border rounded-md text-foreground hover:bg-muted transition-colors">
+                                        <i class="fas fa-bookmark mr-2"></i>Mark for Review
+                                    </button>
+                                    <button class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors">
+                                        Save & Next<i class="fas fa-chevron-right ml-2"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Submit Exam Section (would appear on last question) -->
+                        <div class="mt-6 bg-card rounded-lg border border-destructive/20 p-6 shadow-sm">
+                            <div class="flex items-start space-x-3">
+                                <i class="fas fa-exclamation-triangle text-destructive text-xl mt-1"></i>
+                                <div class="flex-1">
+                                    <h3 class="text-lg font-semibold text-foreground mb-2">Ready to Submit?</h3>
+                                    <p class="text-sm text-muted-foreground mb-4">
+                                        Make sure you've reviewed all your answers. Once submitted, you cannot make changes.
+                                    </p>
+                                    <div class="flex space-x-3">
+                                        <button class="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90 transition-colors font-medium">
+                                            Submit Exam
+                                        </button>
+                                        <button class="px-4 py-2 border border-border rounded-md text-foreground hover:bg-muted transition-colors">
+                                            Review Answers
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- @END_COMPONENT: QuestionRenderer -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: ExamInterface -->
+
+    <!-- Instructor Dashboard -->
+    <!-- @COMPONENT: InstructorDashboard [exam management and creation] -->
+    <div id="instructor-dashboard" class="view-section">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h1 class="text-3xl font-bold text-foreground">Instructor Dashboard</h1>
+                    <p class="text-muted-foreground">Manage your examinations and track student progress</p>
+                </div>
+                <button class="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors flex items-center">
+                    <i class="fas fa-plus mr-2"></i>Create New Exam
+                </button>
+            </div>
+
+            <!-- Stats Overview -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-card rounded-lg border border-border p-6 shadow-sm">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-file-alt text-primary text-2xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-muted-foreground">Total Exams</p>
+                            <p class="text-2xl font-bold text-foreground" data-bind="stats.totalExams" data-mock="true">12</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-card rounded-lg border border-border p-6 shadow-sm">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-users text-secondary text-2xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-muted-foreground">Students</p>
+                            <p class="text-2xl font-bold text-foreground" data-bind="stats.totalStudents" data-mock="true">156</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-card rounded-lg border border-border p-6 shadow-sm">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-chart-line text-accent text-2xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-muted-foreground">Avg Score</p>
+                            <p class="text-2xl font-bold text-foreground" data-bind="stats.avgScore" data-mock="true">82%</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-card rounded-lg border border-border p-6 shadow-sm">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-clock text-destructive text-2xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-muted-foreground">Pending</p>
+                            <p class="text-2xl font-bold text-foreground" data-bind="stats.pendingGrades" data-mock="true">23</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Exams and Quick Actions -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                <!-- Recent Exams -->
+                <div class="lg:col-span-2">
+                    <h2 class="text-xl font-semibold text-foreground mb-4">Recent Examinations</h2>
+                    <div class="space-y-4">
+                        <!-- @MAP: recentExams.map(exam => ( -->
+                        <div class="bg-card rounded-lg border border-border p-6 shadow-sm">
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-foreground" data-bind="exam.title" data-mock="true">Advanced Calculus Final</h3>
+                                    <p class="text-sm text-muted-foreground" data-bind="exam.subject" data-mock="true">Mathematics • 25 Questions</p>
+                                </div>
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary/10 text-secondary">
+                                    Active
+                                </span>
+                            </div>
+                            <div class="grid grid-cols-3 gap-4 mb-4">
+                                <div class="text-center">
+                                    <p class="text-2xl font-bold text-foreground" data-bind="exam.assigned" data-mock="true">45</p>
+                                    <p class="text-xs text-muted-foreground">Assigned</p>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-2xl font-bold text-foreground" data-bind="exam.completed" data-mock="true">32</p>
+                                    <p class="text-xs text-muted-foreground">Completed</p>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-2xl font-bold text-foreground" data-bind="exam.avgScore" data-mock="true">84%</p>
+                                    <p class="text-xs text-muted-foreground">Avg Score</p>
+                                </div>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button class="flex-1 bg-primary text-primary-foreground py-2 px-3 rounded-md hover:bg-primary/90 transition-colors text-sm">
+                                    View Results
+                                </button>
+                                <button class="flex-1 border border-border py-2 px-3 rounded-md text-foreground hover:bg-muted transition-colors text-sm">
+                                    Edit Exam
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-card rounded-lg border border-border p-6 shadow-sm">
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <h3 class="text-lg font-semibold text-foreground" data-mock="true">Quantum Physics Midterm</h3>
+                                    <p class="text-sm text-muted-foreground" data-mock="true">Physics • 20 Questions</p>
+                                </div>
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent/10 text-accent">
+                                    Draft
+                                </span>
+                            </div>
+                            <div class="grid grid-cols-3 gap-4 mb-4">
+                                <div class="text-center">
+                                    <p class="text-2xl font-bold text-foreground" data-mock="true">0</p>
+                                    <p class="text-xs text-muted-foreground">Assigned</p>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-2xl font-bold text-foreground" data-mock="true">0</p>
+                                    <p class="text-xs text-muted-foreground">Completed</p>
+                                </div>
+                                <div class="text-center">
+                                    <p class="text-2xl font-bold text-foreground" data-mock="true">-</p>
+                                    <p class="text-xs text-muted-foreground">Avg Score</p>
+                                </div>
+                            </div>
+                            <div class="flex space-x-2">
+                                <button class="flex-1 bg-primary text-primary-foreground py-2 px-3 rounded-md hover:bg-primary/90 transition-colors text-sm">
+                                    Publish
+                                </button>
+                                <button class="flex-1 border border-border py-2 px-3 rounded-md text-foreground hover:bg-muted transition-colors text-sm">
+                                    Edit
+                                </button>
+                            </div>
+                        </div>
+                        <!-- @END_MAP )) -->
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div>
+                    <h2 class="text-xl font-semibold text-foreground mb-4">Quick Actions</h2>
+                    <div class="space-y-4">
+                        <div class="bg-card rounded-lg border border-border p-4 shadow-sm">
+                            <h3 class="text-sm font-semibold text-foreground mb-2">Create Exam</h3>
+                            <p class="text-xs text-muted-foreground mb-3">Start creating a new examination</p>
+                            <button class="w-full bg-primary text-primary-foreground py-2 px-3 rounded-md hover:bg-primary/90 transition-colors text-sm">
+                                <i class="fas fa-plus mr-2"></i>New Exam
+                            </button>
+                        </div>
+                        
+                        <div class="bg-card rounded-lg border border-border p-4 shadow-sm">
+                            <h3 class="text-sm font-semibold text-foreground mb-2">Question Bank</h3>
+                            <p class="text-xs text-muted-foreground mb-3">Manage your question library</p>
+                            <button class="w-full border border-border py-2 px-3 rounded-md text-foreground hover:bg-muted transition-colors text-sm">
+                                <i class="fas fa-database mr-2"></i>View Bank
+                            </button>
+                        </div>
+                        
+                        <div class="bg-card rounded-lg border border-border p-4 shadow-sm">
+                            <h3 class="text-sm font-semibold text-foreground mb-2">Student Reports</h3>
+                            <p class="text-xs text-muted-foreground mb-3">View detailed analytics</p>
+                            <button class="w-full border border-border py-2 px-3 rounded-md text-foreground hover:bg-muted transition-colors text-sm">
+                                <i class="fas fa-chart-bar mr-2"></i>Analytics
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Exam Creation Form (would be in a modal/separate page) -->
+            <div class="bg-card rounded-lg border border-border p-6 shadow-sm">
+                <h2 class="text-xl font-semibold text-foreground mb-6">Create New Examination</h2>
+                <form class="space-y-6" data-implementation="Should create exam and redirect to question builder">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-2">Exam Title</label>
+                            <input 
+                                type="text" 
+                                class="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
+                                placeholder="Enter exam title"
+                            >
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-2">Subject</label>
+                            <select class="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring">
+                                <option>Select subject</option>
+                                <option>Mathematics</option>
+                                <option>Physics</option>
+                                <option>Computer Science</option>
+                                <option>Chemistry</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-2">Duration (minutes)</label>
+                            <input 
+                                type="number" 
+                                class="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
+                                placeholder="120"
+                            >
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-2">Total Marks</label>
+                            <input 
+                                type="number" 
+                                class="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
+                                placeholder="100"
+                            >
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-2">Description</label>
+                        <textarea 
+                            class="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
+                            rows="3"
+                            placeholder="Enter exam description and instructions"
+                        ></textarea>
+                    </div>
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" class="px-4 py-2 border border-border rounded-md text-foreground hover:bg-muted transition-colors">
+                            Save as Draft
+                        </button>
+                        <button type="submit" class="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors">
+                            Create & Add Questions
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: InstructorDashboard -->
+
+    <!-- Admin Dashboard -->
+    <!-- @COMPONENT: AdminDashboard [user management and system overview] -->
+    <div id="admin-dashboard" class="view-section">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Header -->
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h1 class="text-3xl font-bold text-foreground">Admin Dashboard</h1>
+                    <p class="text-muted-foreground">System overview and user management</p>
+                </div>
+                <div class="flex space-x-3">
+                    <button class="bg-secondary text-secondary-foreground px-4 py-2 rounded-md hover:bg-secondary/90 transition-colors flex items-center">
+                        <i class="fas fa-user-plus mr-2"></i>Add User
+                    </button>
+                    <button class="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors flex items-center">
+                        <i class="fas fa-download mr-2"></i>Export Data
+                    </button>
+                </div>
+            </div>
+
+            <!-- System Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-6 gap-6 mb-8">
+                <div class="bg-card rounded-lg border border-border p-6 shadow-sm">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-users text-primary text-2xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-muted-foreground">Total Users</p>
+                            <p class="text-2xl font-bold text-foreground" data-bind="stats.totalUsers" data-mock="true">1,247</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-card rounded-lg border border-border p-6 shadow-sm">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-user-graduate text-secondary text-2xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-muted-foreground">Students</p>
+                            <p class="text-2xl font-bold text-foreground" data-bind="stats.students" data-mock="true">1,156</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-card rounded-lg border border-border p-6 shadow-sm">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-chalkboard-teacher text-accent text-2xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-muted-foreground">Instructors</p>
+                            <p class="text-2xl font-bold text-foreground" data-bind="stats.instructors" data-mock="true">89</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-card rounded-lg border border-border p-6 shadow-sm">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-file-alt text-primary text-2xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-muted-foreground">Total Exams</p>
+                            <p class="text-2xl font-bold text-foreground" data-bind="stats.totalExams" data-mock="true">324</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-card rounded-lg border border-border p-6 shadow-sm">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-chart-line text-secondary text-2xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-muted-foreground">Active Today</p>
+                            <p class="text-2xl font-bold text-foreground" data-bind="stats.activeToday" data-mock="true">156</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-card rounded-lg border border-border p-6 shadow-sm">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <i class="fas fa-server text-accent text-2xl"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-sm font-medium text-muted-foreground">System Load</p>
+                            <p class="text-2xl font-bold text-foreground" data-bind="stats.systemLoad" data-mock="true">72%</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity and User Management -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                <!-- Recent Activity -->
+                <div>
+                    <h2 class="text-xl font-semibold text-foreground mb-4">Recent Activity</h2>
+                    <div class="bg-card rounded-lg border border-border shadow-sm">
+                        <div class="p-4">
+                            <div class="space-y-4">
+                                <!-- @MAP: recentActivity.map(activity => ( -->
+                                <div class="flex items-start space-x-3">
+                                    <div class="flex-shrink-0">
+                                        <div class="w-8 h-8 bg-primary/10 text-primary rounded-full flex items-center justify-center">
+                                            <i class="fas fa-user-plus text-sm"></i>
+                                        </div>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm text-foreground" data-bind="activity.description" data-mock="true">
+                                            New student <span class="font-medium">Sarah Johnson</span> registered
+                                        </p>
+                                        <p class="text-xs text-muted-foreground" data-bind="activity.timestamp" data-mock="true">2 minutes ago</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-start space-x-3">
+                                    <div class="flex-shrink-0">
+                                        <div class="w-8 h-8 bg-secondary/10 text-secondary rounded-full flex items-center justify-center">
+                                            <i class="fas fa-file-alt text-sm"></i>
+                                        </div>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm text-foreground" data-mock="true">
+                                            Exam <span class="font-medium">Physics Final</span> published
+                                        </p>
+                                        <p class="text-xs text-muted-foreground" data-mock="true">15 minutes ago</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-start space-x-3">
+                                    <div class="flex-shrink-0">
+                                        <div class="w-8 h-8 bg-accent/10 text-accent rounded-full flex items-center justify-center">
+                                            <i class="fas fa-check-circle text-sm"></i>
+                                        </div>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm text-foreground" data-mock="true">
+                                            45 students completed <span class="font-medium">Math Quiz</span>
+                                        </p>
+                                        <p class="text-xs text-muted-foreground" data-mock="true">1 hour ago</p>
+                                    </div>
+                                </div>
+                                <!-- @END_MAP )) -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Management -->
+                <div class="lg:col-span-2">
+                    <h2 class="text-xl font-semibold text-foreground mb-4">User Management</h2>
+                    <div class="bg-card rounded-lg border border-border shadow-sm">
+                        <div class="p-4 border-b border-border">
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center space-x-4">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Search users..."
+                                        class="px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring"
+                                    >
+                                    <select class="px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring">
+                                        <option>All Roles</option>
+                                        <option>Students</option>
+                                        <option>Instructors</option>
+                                        <option>Admins</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-border">
+                                <thead class="bg-muted">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">User</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Role</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Last Active</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-card divide-y divide-border">
+                                    <!-- @MAP: users.map(user => ( -->
+                                    <tr class="hover:bg-muted/50">
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="flex items-center">
+                                                <div class="flex-shrink-0 h-8 w-8">
+                                                    <div class="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                                                        <i class="fas fa-user text-sm"></i>
+                                                    </div>
+                                                </div>
+                                                <div class="ml-3">
+                                                    <div class="text-sm font-medium text-foreground" data-bind="user.name" data-mock="true">Sarah Johnson</div>
+                                                    <div class="text-sm text-muted-foreground" data-bind="user.email" data-mock="true">sarah.johnson@example.com</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary/10 text-secondary">
+                                                Student
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary/10 text-secondary">
+                                                Active
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground" data-bind="user.lastActive" data-mock="true">
+                                            2 minutes ago
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <div class="flex space-x-2">
+                                                <button class="text-primary hover:text-primary/80">Edit</button>
+                                                <button class="text-destructive hover:text-destructive/80">Deactivate</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    
+                                    <tr class="hover:bg-muted/50">
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <div class="flex items-center">
+                                                <div class="flex-shrink-0 h-8 w-8">
+                                                    <div class="h-8 w-8 rounded-full bg-accent/10 text-accent flex items-center justify-center">
+                                                        <i class="fas fa-chalkboard-teacher text-sm"></i>
+                                                    </div>
+                                                </div>
+                                                <div class="ml-3">
+                                                    <div class="text-sm font-medium text-foreground" data-mock="true">Dr. Michael Chen</div>
+                                                    <div class="text-sm text-muted-foreground" data-mock="true">m.chen@example.com</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent/10 text-accent">
+                                                Instructor
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary/10 text-secondary">
+                                                Active
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground" data-mock="true">
+                                            1 hour ago
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                            <div class="flex space-x-2">
+                                                <button class="text-primary hover:text-primary/80">Edit</button>
+                                                <button class="text-destructive hover:text-destructive/80">Deactivate</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <!-- @END_MAP )) -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Reports -->
+            <div class="bg-card rounded-lg border border-border p-6 shadow-sm">
+                <h2 class="text-xl font-semibold text-foreground mb-6">System Reports</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="text-center p-6 border border-border rounded-lg">
+                        <i class="fas fa-chart-bar text-primary text-3xl mb-3"></i>
+                        <h3 class="text-lg font-semibold text-foreground mb-2">Usage Analytics</h3>
+                        <p class="text-sm text-muted-foreground mb-4">Detailed system usage statistics and trends</p>
+                        <button class="bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors">
+                            View Report
+                        </button>
+                    </div>
+                    <div class="text-center p-6 border border-border rounded-lg">
+                        <i class="fas fa-graduation-cap text-secondary text-3xl mb-3"></i>
+                        <h3 class="text-lg font-semibold text-foreground mb-2">Academic Performance</h3>
+                        <p class="text-sm text-muted-foreground mb-4">Student performance metrics and analytics</p>
+                        <button class="bg-secondary text-secondary-foreground px-4 py-2 rounded-md hover:bg-secondary/90 transition-colors">
+                            View Report
+                        </button>
+                    </div>
+                    <div class="text-center p-6 border border-border rounded-lg">
+                        <i class="fas fa-shield-alt text-accent text-3xl mb-3"></i>
+                        <h3 class="text-lg font-semibold text-foreground mb-2">Security Audit</h3>
+                        <p class="text-sm text-muted-foreground mb-4">System security logs and audit trails</p>
+                        <button class="bg-accent text-accent-foreground px-4 py-2 rounded-md hover:bg-accent/90 transition-colors">
+                            View Report
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: AdminDashboard -->
+
+    <!-- Results View -->
+    <!-- @COMPONENT: ResultsView [detailed exam results and feedback] -->
+    <div id="results" class="view-section">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Results Header -->
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold text-foreground">Examination Results</h1>
+                <p class="text-muted-foreground">Detailed performance analysis and feedback</p>
+            </div>
+
+            <!-- Result Summary Card -->
+            <div class="bg-card rounded-lg border border-border p-8 shadow-sm mb-8">
+                <div class="text-center mb-6">
+                    <h2 class="text-2xl font-bold text-foreground mb-2" data-bind="exam.title" data-mock="true">Mathematics Final Exam</h2>
+                    <p class="text-muted-foreground" data-bind="exam.subject" data-mock="true">Advanced Calculus • Completed on March 15, 2024</p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                    <div class="text-center">
+                        <div class="text-4xl font-bold text-primary mb-2" data-bind="result.score" data-mock="true">87%</div>
+                        <p class="text-sm text-muted-foreground">Overall Score</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-4xl font-bold text-secondary mb-2" data-bind="result.grade" data-mock="true">B+</div>
+                        <p class="text-sm text-muted-foreground">Grade</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-4xl font-bold text-accent mb-2" data-bind="result.rank" data-mock="true">12</div>
+                        <p class="text-sm text-muted-foreground">Class Rank</p>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-4xl font-bold text-foreground mb-2" data-bind="result.timeSpent" data-mock="true">98m</div>
+                        <p class="text-sm text-muted-foreground">Time Spent</p>
+                    </div>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="w-full bg-muted rounded-full h-4 mb-4">
+                    <div class="bg-primary h-4 rounded-full progress-bar" style="width: 87%"></div>
+                </div>
+                <p class="text-center text-sm text-muted-foreground">You scored higher than 73% of students</p>
+            </div>
+
+            <!-- Performance Breakdown -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+                <!-- Question Type Performance -->
+                <div class="bg-card rounded-lg border border-border p-6 shadow-sm">
+                    <h3 class="text-lg font-semibold text-foreground mb-4">Performance by Question Type</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm text-foreground">Multiple Choice</span>
+                                <span class="text-sm font-medium text-foreground" data-bind="performance.mcq" data-mock="true">92%</span>
+                            </div>
+                            <div class="w-full bg-muted rounded-full h-2">
+                                <div class="bg-secondary h-2 rounded-full" style="width: 92%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm text-foreground">True/False</span>
+                                <span class="text-sm font-medium text-foreground" data-bind="performance.tf" data-mock="true">85%</span>
+                            </div>
+                            <div class="w-full bg-muted rounded-full h-2">
+                                <div class="bg-primary h-2 rounded-full" style="width: 85%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm text-foreground">Short Answer</span>
+                                <span class="text-sm font-medium text-foreground" data-bind="performance.short" data-mock="true">78%</span>
+                            </div>
+                            <div class="w-full bg-muted rounded-full h-2">
+                                <div class="bg-accent h-2 rounded-full" style="width: 78%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Time Analysis -->
+                <div class="bg-card rounded-lg border border-border p-6 shadow-sm">
+                    <h3 class="text-lg font-semibold text-foreground mb-4">Time Analysis</h3>
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-muted-foreground">Total Time</span>
+                            <span class="text-sm font-medium text-foreground" data-bind="timeAnalysis.total" data-mock="true">98 minutes</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-muted-foreground">Average per Question</span>
+                            <span class="text-sm font-medium text-foreground" data-bind="timeAnalysis.avgPerQuestion" data-mock="true">3.9 minutes</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-muted-foreground">Fastest Question</span>
+                            <span class="text-sm font-medium text-foreground" data-bind="timeAnalysis.fastest" data-mock="true">45 seconds</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-muted-foreground">Slowest Question</span>
+                            <span class="text-sm font-medium text-foreground" data-bind="timeAnalysis.slowest" data-mock="true">8.2 minutes</span>
+                        </div>
+                        <div class="pt-4 border-t border-border">
+                            <div class="flex items-center text-sm">
+                                <i class="fas fa-lightbulb text-accent mr-2"></i>
+                                <span class="text-muted-foreground">You finished with 22 minutes remaining</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recommendations -->
+                <div class="bg-card rounded-lg border border-border p-6 shadow-sm">
+                    <h3 class="text-lg font-semibold text-foreground mb-4">Recommendations</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-start space-x-3">
+                            <i class="fas fa-check-circle text-secondary text-sm mt-1"></i>
+                            <p class="text-sm text-foreground">Excellent performance on multiple choice questions</p>
+                        </div>
+                        <div class="flex items-start space-x-3">
+                            <i class="fas fa-exclamation-triangle text-accent text-sm mt-1"></i>
+                            <p class="text-sm text-foreground">Consider reviewing integration techniques for short answer questions</p>
+                        </div>
+                        <div class="flex items-start space-x-3">
+                            <i class="fas fa-clock text-primary text-sm mt-1"></i>
+                            <p class="text-sm text-foreground">Good time management - you can afford to double-check your work</p>
+                        </div>
+                        <div class="pt-3 border-t border-border">
+                            <button class="w-full bg-primary text-primary-foreground py-2 px-4 rounded-md hover:bg-primary/90 transition-colors text-sm">
+                                Download Detailed Report
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Question-by-Question Analysis -->
+            <div class="bg-card rounded-lg border border-border shadow-sm">
+                <div class="px-6 py-4 border-b border-border">
+                    <h3 class="text-lg font-semibold text-foreground">Question Analysis</h3>
+                    <p class="text-sm text-muted-foreground">Detailed breakdown of your performance on each question</p>
+                </div>
+                <div class="divide-y divide-border">
+                    <!-- @MAP: questionAnalysis.map((q, index) => ( -->
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex-1">
+                                <h4 class="text-sm font-semibold text-foreground mb-1">Question 1</h4>
+                                <p class="text-sm text-muted-foreground" data-bind="question.text" data-mock="true">
+                                    Calculate the derivative of f(x) = 3x³ + 2x² - 5x + 1
+                                </p>
+                            </div>
+                            <div class="flex items-center space-x-4">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary/10 text-secondary">
+                                    Correct
+                                </span>
+                                <span class="text-sm font-medium text-foreground" data-bind="question.score" data-mock="true">5/5 pts</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-xs font-medium text-muted-foreground mb-2">Your Answer:</p>
+                                <p class="text-sm text-foreground bg-muted p-3 rounded" data-bind="question.userAnswer" data-mock="true">
+                                    f'(x) = 9x² + 4x - 5
+                                </p>
+                            </div>
+                            <div>
+                                <p class="text-xs font-medium text-muted-foreground mb-2">Feedback:</p>
+                                <p class="text-sm text-foreground bg-secondary/10 p-3 rounded" data-bind="question.feedback" data-mock="true">
+                                    Excellent work! You correctly applied the power rule to each term.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="mt-3 flex items-center text-xs text-muted-foreground">
+                            <i class="fas fa-clock mr-1"></i>
+                            <span data-bind="question.timeSpent" data-mock="true">2m 15s</span>
+                            <span class="mx-2">•</span>
+                            <span>Difficulty: Easy</span>
+                        </div>
+                    </div>
+                    
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex-1">
+                                <h4 class="text-sm font-semibold text-foreground mb-1">Question 2</h4>
+                                <p class="text-sm text-muted-foreground" data-mock="true">
+                                    Solve the definite integral: ∫₀² (x² + 3x) dx
+                                </p>
+                            </div>
+                            <div class="flex items-center space-x-4">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent/10 text-accent">
+                                    Partial
+                                </span>
+                                <span class="text-sm font-medium text-foreground" data-mock="true">3/5 pts</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-xs font-medium text-muted-foreground mb-2">Your Answer:</p>
+                                <p class="text-sm text-foreground bg-muted p-3 rounded" data-mock="true">
+                                    [x³/3 + 3x²/2]₀² = 8/3 + 6 = 26/3
+                                </p>
+                            </div>
+                            <div>
+                                <p class="text-xs font-medium text-muted-foreground mb-2">Feedback:</p>
+                                <p class="text-sm text-foreground bg-accent/10 p-3 rounded" data-mock="true">
+                                    Good setup and integration, but calculation error in the final step. The correct answer is 26/3 ≈ 8.67.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="mt-3 flex items-center text-xs text-muted-foreground">
+                            <i class="fas fa-clock mr-1"></i>
+                            <span data-mock="true">4m 32s</span>
+                            <span class="mx-2">•</span>
+                            <span>Difficulty: Medium</span>
+                        </div>
+                    </div>
+                    <!-- @END_MAP )) -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- @END_COMPONENT: ResultsView -->
+
+    <script>
+        // Simple view switching for demo
+        (function() {
+            const navButtons = document.querySelectorAll('.nav-btn');
+            const viewSections = document.querySelectorAll('.view-section');
+            
+            navButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const targetView = this.getAttribute('data-view');
+                    
+                    // Update active nav button
+                    navButtons.forEach(btn => {
+                        btn.classList.remove('bg-primary', 'text-primary-foreground');
+                        btn.classList.add('text-muted-foreground', 'hover:text-foreground');
+                    });
+                    this.classList.add('bg-primary', 'text-primary-foreground');
+                    this.classList.remove('text-muted-foreground', 'hover:text-foreground');
+                    
+                    // Switch views
+                    viewSections.forEach(section => {
+                        section.classList.remove('active');
+                    });
+                    document.getElementById(targetView).classList.add('active');
+                });
+            });
+            
+            // Question navigator functionality for exam interface
+            const questionBtns = document.querySelectorAll('[data-question]');
+            questionBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const questionNum = this.getAttribute('data-question');
+                    // TODO: Implement question navigation logic
+                    console.log('Navigate to question:', questionNum);
+                });
+            });
+            
+            // Timer simulation
+            function updateTimer() {
+                const timerElement = document.querySelector('[data-bind="timeRemaining"]');
+                if (timerElement) {
+                    // TODO: Implement actual countdown timer with auto-submit
+                    // This is just a visual demo
+                }
+            }
+            
+            // Auto-save simulation for exam answers
+            const answerInputs = document.querySelectorAll('textarea[data-bind="answer.value"]');
+            answerInputs.forEach(input => {
+                input.addEventListener('input', function() {
+                    // TODO: Implement auto-save functionality
+                    console.log('Auto-saving answer...');
+                });
+            });
+            
+            // Form submission handlers
+            const forms = document.querySelectorAll('form');
+            forms.forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    // TODO: Implement actual form submission logic
+                    console.log('Form submitted:', this);
+                });
+            });
+        })();
+    </script>
+</body>
+</html>

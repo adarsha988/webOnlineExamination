@@ -1,0 +1,157 @@
+{
+  "users": [
+    {
+      "email": "admin@example.com",
+      "password": "$2b$10$VvjjROy93rr5uO5m9owHkuOl5AwcgR4Uic3pSbwlP3T61wVJ4/YFe",
+      "name": "System Administrator",
+      "role": "admin",
+      "id": "f94af64e-fbd8-4dab-9345-a6950bff662a",
+      "createdAt": "2025-09-04T17:14:31.729Z"
+    },
+    {
+      "email": "inst@example.com",
+      "password": "$2b$10$BP6PxGO/FOLzv.qJOWUBe.aDGj6YrzgMdn0LHH1xMveeJpl14VUgi",
+      "name": "Dr. Michael Chen",
+      "role": "instructor",
+      "id": "2990b221-4726-41e2-816e-7a2d6a0abae1",
+      "createdAt": "2025-09-04T17:14:32.126Z"
+    },
+    {
+      "email": "stu1@example.com",
+      "password": "$2b$10$FgsC8xCctqyXs3sSTgHXg.nlWuLAD8hHhBe8lvxv5QPPlcqjOqpzG",
+      "name": "John Doe",
+      "role": "student",
+      "id": "adcc5fd3-f1fe-4649-9fa5-91d8243a9df6",
+      "createdAt": "2025-09-04T17:14:32.762Z"
+    },
+    {
+      "email": "stu2@example.com",
+      "password": "$2b$10$IR23oyakabd1ZDHjZq3tJ.eFhHCNUV0/bgJnU3OpY4BVAZbHYQ0eq",
+      "name": "Sarah Johnson",
+      "role": "student",
+      "id": "e7959fe5-e0fa-4574-a081-c7d2bf00b7f3",
+      "createdAt": "2025-09-04T17:14:32.978Z"
+    }
+  ],
+  "exams": [
+    {
+      "title": "Mathematics Final Exam",
+      "subject": "Advanced Calculus",
+      "description": "Comprehensive final exam covering integration, differentiation, and series.",
+      "duration": 120,
+      "totalMarks": 100,
+      "instructorId": "2990b221-4726-41e2-816e-7a2d6a0abae1",
+      "scheduledDate": "2025-09-11T17:14:32.979Z",
+      "id": "bf54b33e-53ae-4432-8260-1d3d69bdd239",
+      "status": "active",
+      "assignedStudents": [
+        "adcc5fd3-f1fe-4649-9fa5-91d8243a9df6",
+        "e7959fe5-e0fa-4574-a081-c7d2bf00b7f3"
+      ],
+      "createdAt": "2025-09-04T17:14:32.979Z"
+    }
+  ],
+  "questions": [
+    {
+      "examId": "bf54b33e-53ae-4432-8260-1d3d69bdd239",
+      "type": "multiple_choice",
+      "text": "What is the derivative of f(x) = 3x² + 2x - 1?",
+      "description": "Apply the power rule to find the derivative.",
+      "options": [
+        "6x + 2",
+        "3x + 2",
+        "6x² + 2x",
+        "9x + 2"
+      ],
+      "correctAnswer": "6x + 2",
+      "points": 5,
+      "order": 1,
+      "sampleAnswers": null,
+      "id": "f23e6276-c29a-44d1-b635-4ac7bd940b71"
+    },
+    {
+      "examId": "bf54b33e-53ae-4432-8260-1d3d69bdd239",
+      "type": "true_false",
+      "text": "The integral of a constant function is always zero.",
+      "description": "Consider the fundamental theorem of calculus.",
+      "correctAnswer": "false",
+      "points": 3,
+      "order": 2,
+      "options": null,
+      "sampleAnswers": null,
+      "id": "049c2851-93a3-43de-a714-23c92eca1d41"
+    },
+    {
+      "examId": "bf54b33e-53ae-4432-8260-1d3d69bdd239",
+      "type": "short_answer",
+      "text": "Solve the definite integral: ∫₀² (3x² + 2x - 1) dx",
+      "description": "Show your work step by step and provide the exact numerical answer.",
+      "sampleAnswers": [
+        "(x³ + x² - x) evaluated from 0 to 2 = 8 + 4 - 2 = 10",
+        "10",
+        "ten",
+        "(8 + 4 - 2) - (0) = 10"
+      ],
+      "points": 8,
+      "order": 3,
+      "options": null,
+      "correctAnswer": null,
+      "id": "ca802912-e6de-4e87-b639-dcc7dc34f52f"
+    },
+    {
+      "examId": "bf54b33e-53ae-4432-8260-1d3d69bdd239",
+      "type": "multiple_choice",
+      "text": "Which of the following represents the chain rule?",
+      "description": "Select the correct mathematical expression.",
+      "options": [
+        "(f ∘ g)'(x) = f'(g(x)) · g'(x)",
+        "(f ∘ g)'(x) = f'(x) · g'(x)",
+        "(f ∘ g)'(x) = f(g'(x))",
+        "(f ∘ g)'(x) = f'(x) + g'(x)"
+      ],
+      "correctAnswer": "(f ∘ g)'(x) = f'(g(x)) · g'(x)",
+      "points": 4,
+      "order": 4,
+      "sampleAnswers": null,
+      "id": "cb6d143b-9cd7-43ee-ad11-716a6d2fefae"
+    },
+    {
+      "examId": "bf54b33e-53ae-4432-8260-1d3d69bdd239",
+      "type": "short_answer",
+      "text": "Explain the geometric interpretation of the derivative at a point.",
+      "description": "Provide a clear explanation in 2-3 sentences.",
+      "sampleAnswers": [
+        "The derivative at a point represents the slope of the tangent line to the curve at that point",
+        "It gives the instantaneous rate of change of the function at that specific point",
+        "Geometrically, it is the slope of the line that just touches the curve at one point"
+      ],
+      "points": 6,
+      "order": 5,
+      "options": null,
+      "correctAnswer": null,
+      "id": "db519ef9-44ef-4d27-b66b-79ee2616baaf"
+    }
+  ],
+  "attempts": [
+    {
+      "examId": "bf54b33e-53ae-4432-8260-1d3d69bdd239",
+      "studentId": "adcc5fd3-f1fe-4649-9fa5-91d8243a9df6",
+      "id": "4846b9f4-fd99-4db6-bb42-3cacb6ccb0c9",
+      "answers": {
+        "undefined": "The derivative represents the slope of the tangent line at a point on the curve"
+      },
+      "markedQuestions": [],
+      "startedAt": "2025-09-04T17:14:32.981Z",
+      "submittedAt": "2025-09-02T17:14:32.981Z",
+      "timeRemaining": null,
+      "score": 73,
+      "grade": "C",
+      "feedback": {
+        "undefined": {
+          "score": 4,
+          "explanation": "Good explanation of the geometric interpretation. Could be more detailed."
+        }
+      }
+    }
+  ]
+}
