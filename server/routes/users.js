@@ -3,6 +3,7 @@ const router = express.Router();
 import User from '../models/user.model.js';
 import Activity from '../models/activity.model.js';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
 // GET /api/users - Get all users with pagination and filtering
 router.get('/', async (req, res) => {
@@ -242,6 +243,43 @@ router.patch('/:id/password', async (req, res) => {
   } catch (error) {
     console.error('Error updating password:', error);
     res.status(500).json({ message: 'Error updating password', error: error.message });
+  }
+});
+
+// POST /api/auth/logout - Logout user
+router.post('/auth/logout', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    if (token) {
+      // Decode token to get user info for activity logging
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+        
+        // Log logout activity
+        await Activity.create({
+          type: 'user_logout',
+          description: `User ${decoded.email} logged out`,
+          user: decoded.userId,
+          ipAddress: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+      } catch (jwtError) {
+        console.log('JWT verification failed during logout:', jwtError.message);
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Logged out successfully'
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error during logout'
+    });
   }
 });
 

@@ -139,6 +139,35 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.post('/api/auth/logout', async (req, res) => {
+    try {
+      const authHeader = req.headers.authorization;
+      const token = authHeader && authHeader.split(' ')[1];
+      
+      if (token) {
+        try {
+          const decoded = jwt.verify(token, JWT_SECRET) as any;
+          
+          // Log logout activity if we have activity logging
+          console.log(`User ${decoded.email} logged out at ${new Date().toISOString()}`);
+        } catch (jwtError) {
+          console.log('JWT verification failed during logout:', (jwtError as Error).message);
+        }
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Logged out successfully'
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error during logout'
+      });
+    }
+  });
+
   // 404 handler for API routes
   app.use('/api/*', (req, res) => {
     res.status(404).json({ 
