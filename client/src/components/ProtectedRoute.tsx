@@ -12,7 +12,7 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    console.log('🛡️ PROTECTED ROUTE CHECK:', { 
+    console.log('PROTECTED ROUTE CHECK:', { 
       isAuthenticated, 
       user: user?.email, 
       userRole: user?.role, 
@@ -20,13 +20,13 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
     });
 
     if (!isAuthenticated) {
-      console.log('🚫 Not authenticated - redirecting to homepage');
+      console.log('Not authenticated - redirecting to homepage');
       setLocation('/');
       return;
     }
 
     if (allowedRoles && user && !allowedRoles.includes(user.role)) {
-      console.log('⚠️ Role not allowed - redirecting to appropriate dashboard');
+      console.log('Role not allowed - redirecting to appropriate dashboard');
       // Redirect to appropriate dashboard based on user role
       if (user.role === 'admin') {
         setLocation('/admin/dashboard');
@@ -38,7 +38,7 @@ const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) => {
     }
   }, [isAuthenticated, user, allowedRoles, setLocation]);
 
-  console.log('🔍 PROTECTED ROUTE RENDER:', { 
+  console.log('PROTECTED ROUTE RENDER:', { 
     isAuthenticated, 
     hasUser: !!user, 
     roleAllowed: !allowedRoles || (user && allowedRoles.includes(user.role))
