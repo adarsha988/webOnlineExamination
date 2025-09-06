@@ -79,15 +79,8 @@ const LocationSection = () => {
   };
 
   const generateMapUrl = (college) => {
-    if (!college?.coordinates) {
-      return "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3532.6871482077887!2d85.31398931506282!3d27.69287908279441!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x39eb199a06c2eaf9%3A0xc5670a9173e161de!2sPatan%20Multiple%20Campus!5e0!3m2!1sen!2snp!4v1641234567890!5m2!1sen!2snp";
-    }
-    
-    const { lat, lng } = college.coordinates;
-    const collegeName = encodeURIComponent(college.name);
-    
-    // Enhanced Google Maps URL with zoom level and marker
-    return `https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1766.3!2d${lng}!3d${lat}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0:0x0!2z${collegeName}!5e0!3m2!1sen!2snp!4v${Date.now()}!5m2!1sen!2snp&q=${lat},${lng}(${collegeName})`;
+    // Return null to disable Google Maps embed and avoid CSP/blocking issues
+    return null;
   };
 
   return (
@@ -154,20 +147,33 @@ const LocationSection = () => {
             viewport={{ once: true }}
             className="bg-white rounded-2xl shadow-lg overflow-hidden"
           >
-            <div id="interactive-map" className="h-96 w-full relative transition-all duration-300 rounded-t-2xl overflow-hidden">
+            <div id="interactive-map" className="h-96 w-full relative transition-all duration-300 rounded-t-2xl overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100">
               {selectedCollege && (
-                <iframe
-                  key={selectedCollege._id}
-                  src={generateMapUrl(selectedCollege)}
-                  width="100%"
-                  height="100%"
-                  style={{ border: 0 }}
-                  allowFullScreen=""
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                  title={`${selectedCollege.name} Location`}
-                  className="transition-opacity duration-500"
-                ></iframe>
+                <div className="h-full w-full flex items-center justify-center">
+                  <div className="text-center p-8">
+                    <MapPin className="h-16 w-16 text-blue-600 mx-auto mb-4" />
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">{selectedCollege.name}</h3>
+                    <p className="text-gray-600 mb-4">{selectedCollege.address}</p>
+                    <div className="space-y-2">
+                      {selectedCollege.coordinates && (
+                        <p className="text-sm text-gray-500">
+                          📍 {selectedCollege.coordinates.lat}, {selectedCollege.coordinates.lng}
+                        </p>
+                      )}
+                      {selectedCollege.website && (
+                        <a
+                          href={selectedCollege.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors duration-200"
+                        >
+                          <ExternalLink className="h-4 w-4 mr-1" />
+                          Visit Website
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
               )}
               {loading && (
                 <div className="absolute inset-0 bg-gray-200 flex items-center justify-center">
@@ -175,36 +181,6 @@ const LocationSection = () => {
                 </div>
               )}
               
-              {/* Map Overlay with College Info */}
-              {selectedCollege && !loading && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: 0.3 }}
-                  className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-sm rounded-lg p-4 shadow-lg border"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-semibold text-gray-900 text-sm">
-                        📍 {selectedCollege.name}
-                      </h4>
-                      <p className="text-xs text-gray-600 mt-1">
-                        {selectedCollege.address}
-                      </p>
-                    </div>
-                    {selectedCollege.website && (
-                      <a
-                        href={selectedCollege.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-800 transition-colors duration-200"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
-                    )}
-                  </div>
-                </motion.div>
-              )}
             </div>
             <div className="p-6">
               {selectedCollege ? (

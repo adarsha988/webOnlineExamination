@@ -142,23 +142,34 @@ router.get('/overview', async (req, res) => {
       User.countDocuments({ role: 'instructor' }),
       Exam.countDocuments()
     ]);
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
     
-    const activeToday = await Activity.distinct('user', {
-      createdAt: { $gte: today, $lt: tomorrow }
+    const activeToday = await Activity.countDocuments({
+      type: 'user_login',
+      createdAt: { $gte: today }
     });
-    
+
+    const activeUsers = await User.countDocuments({ isActive: true });
+
+    // Mock system load data
+    const systemLoad = {
+      cpu: Math.floor(Math.random() * 30) + 30, // 30-60%
+      memory: Math.floor(Math.random() * 40) + 40, // 40-80%
+      requests: Math.floor(Math.random() * 100) + 80, // 80-180 req/min
+      uptime: '99.9%'
+    };
+
     res.json({
       totalUsers: users,
       totalStudents: students,
       totalInstructors: instructors,
       totalExams: exams,
-      activeToday: activeToday.length,
-      systemHealth: 'Good' // Mock system health
+      activeToday,
+      activeUsers,
+      systemLoad,
+      systemHealth: 'Good'
     });
   } catch (error) {
     console.error('Error fetching overview stats:', error);

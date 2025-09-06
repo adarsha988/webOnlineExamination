@@ -4,6 +4,7 @@ import User from '../models/user.model.js';
 import Activity from '../models/activity.model.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import { config } from '../config/env.js';
 
 // GET /api/users - Get all users with pagination and filtering
 router.get('/', async (req, res) => {
@@ -75,7 +76,7 @@ router.post('/', async (req, res) => {
     }
     
     // Hash password
-    const saltRounds = 10;
+    const saltRounds = config.security.bcryptSaltRounds;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     
     // Create user
@@ -225,7 +226,7 @@ router.patch('/:id/password', async (req, res) => {
     }
     
     // Hash new password
-    const saltRounds = 10;
+    const saltRounds = config.security.bcryptSaltRounds;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
     
     user.password = hashedPassword;
@@ -255,7 +256,7 @@ router.post('/auth/logout', async (req, res) => {
     if (token) {
       // Decode token to get user info for activity logging
       try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+        const decoded = jwt.verify(token, config.jwt.secret);
         
         // Log logout activity
         await Activity.create({

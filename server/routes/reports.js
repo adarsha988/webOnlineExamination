@@ -347,4 +347,46 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/reports/:id/download - Download report in specified format
+router.get('/:id/download', async (req, res) => {
+  try {
+    const { format = 'pdf' } = req.query;
+    const report = await Report.findById(req.params.id)
+      .populate('generatedBy', 'name email');
+    
+    if (!report) {
+      return res.status(404).json({ message: 'Report not found' });
+    }
+    
+    // Generate report content based on format
+    let content, contentType, filename;
+    
+    if (format === 'pdf') {
+      // Mock PDF generation - in production, use a library like puppeteer or jsPDF
+      content = `PDF Report: ${report.title}\n\nGenerated: ${report.createdAt}\nType: ${report.type}\n\nData:\n${JSON.stringify(report.data, null, 2)}`;
+      contentType = 'application/pdf';
+      filename = `${report.title.replace(/\s+/g, '_')}.pdf`;
+    } else if (format === 'csv') {
+      // Mock CSV generation
+      content = `Title,Type,Generated Date,Data\n"${report.title}","${report.type}","${report.createdAt}","${JSON.stringify(report.data).replace(/"/g, '""')}"`;
+      contentType = 'text/csv';
+      filename = `${report.title.replace(/\s+/g, '_')}.csv`;
+    } else if (format === 'json') {
+      content = JSON.stringify(report, null, 2);
+      contentType = 'application/json';
+      filename = `${report.title.replace(/\s+/g, '_')}.json`;
+    } else {
+      return res.status(400).json({ message: 'Unsupported format. Use pdf, csv, or json.' });
+    }
+    
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(content);
+    
+  } catch (error) {
+    console.error('Error downloading report:', error);
+    res.status(500).json({ message: 'Error downloading report', error: error.message });
+  }
+});
+
 export default router;

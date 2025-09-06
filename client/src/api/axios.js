@@ -50,4 +50,24 @@ export const apiRequest = async (method, url, data) => {
   }
 };
 
-export default { apiRequest, getAuthToken, handleAuthError };
+// Create axios-like API object
+const api = {
+  get: async (url) => {
+    const response = await apiRequest('GET', url);
+    return { data: await response.json() };
+  },
+  post: async (url, data) => {
+    const response = await apiRequest('POST', url, data);
+    return { data: await response.json() };
+  },
+  put: async (url, data) => {
+    const response = await apiRequest('PUT', url, data);
+    return { data: await response.json() };
+  },
+  delete: async (url) => {
+    const response = await apiRequest('DELETE', url);
+    return { data: await response.json() };
+  }
+};
+
+export default api;

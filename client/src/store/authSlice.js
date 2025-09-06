@@ -44,7 +44,10 @@ export const checkAuth = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('token');
-      if (!token) return rejectWithValue('No token found');
+      if (!token) {
+        // Silent rejection - no error message for missing token on initial load
+        return rejectWithValue(null);
+      }
       
       const response = await apiRequest('GET', '/api/auth/me');
       const data = await response.json();
@@ -56,15 +59,50 @@ export const checkAuth = createAsyncThunk(
   }
 );
 
-// Logout async thunk - always succeeds for smooth UX
+// Logout async thunk - calls server and clears local storage (prevents double execution)
 export const logoutUser = createAsyncThunk(
   'auth/logout',
-  async () => {
-    // Clear token from localStorage
-    localStorage.removeItem('token');
+  async (_, { rejectWithValue, getState }) => {
+    const state = getState();
     
-    // Always return success - no need to call server for logout
-    return { success: true };
+    // Prevent double execution if already logging out
+    if (state.auth.isLoading) {
+      console.log('🔄 LOGOUT ALREADY IN PROGRESS - Skipping duplicate request');
+      return { success: true };
+    }
+    
+    console.log('🚪 LOGOUT INITIATED - Starting logout process');
+    
+    try {
+      console.log('📡 CALLING SERVER LOGOUT - Making API request to /api/auth/logout');
+      
+      // Call server logout endpoint
+      const response = await apiRequest('POST', '/api/auth/logout');
+      console.log('✅ SERVER LOGOUT SUCCESS - Response:', response.status);
+      
+      // Clear token from localStorage regardless of server response
+      const tokenBefore = localStorage.getItem('token');
+      localStorage.removeItem('token');
+      const tokenAfter = localStorage.getItem('token');
+      
+      console.log('🧹 TOKEN CLEANUP - Before:', !!tokenBefore, 'After:', !!tokenAfter);
+      console.log('🎉 LOGOUT COMPLETE - Success');
+      
+      return { success: true };
+    } catch (error) {
+      console.error('❌ SERVER LOGOUT FAILED - Error details:', error);
+      console.error('📋 ERROR STACK:', error.stack);
+      
+      // Even if server call fails, clear local storage for UX
+      const tokenBefore = localStorage.getItem('token');
+      localStorage.removeItem('token');
+      const tokenAfter = localStorage.getItem('token');
+      
+      console.log('🧹 FALLBACK TOKEN CLEANUP - Before:', !!tokenBefore, 'After:', !!tokenAfter);
+      console.warn('⚠️ LOGOUT PARTIAL SUCCESS - Server failed but local cleanup done');
+      
+      return { success: true };
+    }
   }
 );
 
@@ -148,6 +186,7 @@ const authSlice = createSlice({
       })
       .addCase(checkAuth.rejected, (state, action) => {
         state.isLoading = false;
+        // Only set error if it's not a silent rejection (null payload)
         state.error = action.payload;
         state.isAuthenticated = false;
         state.user = null;
@@ -155,14 +194,25 @@ const authSlice = createSlice({
       })
       // Logout
       .addCase(logoutUser.pending, (state) => {
+        console.log('⏳ LOGOUT PENDING - Redux state: loading started, current loading:', state.isLoading);
         state.isLoading = true;
+        console.log('📊 LOGOUT PENDING STATE - isLoading now:', state.isLoading);
       })
       .addCase(logoutUser.fulfilled, (state) => {
+        console.log('🎯 LOGOUT FULFILLED - Redux state: clearing user data');
+        console.log('📊 BEFORE CLEAR - user:', !!state.user, 'token:', !!state.token, 'isAuth:', state.isAuthenticated);
         state.isLoading = false;
         state.user = null;
         state.token = null;
         state.isAuthenticated = false;
         state.error = null;
+        console.log('📊 AFTER CLEAR - user:', !!state.user, 'token:', !!state.token, 'isAuth:', state.isAuthenticated);
+      })
+      .addCase(logoutUser.rejected, (state, action) => {
+        console.log('💥 LOGOUT REJECTED - Error:', action.payload);
+        state.isLoading = false;
+        state.error = action.payload;
+        console.log('📊 LOGOUT REJECTED STATE - isLoading:', state.isLoading, 'error:', state.error);
       });
   },
 });

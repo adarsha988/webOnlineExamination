@@ -23,7 +23,7 @@ const AuthModal = ({ isOpen, onClose, mode, onModeChange }) => {
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    if (error) {
+    if (error && error !== null) {
       toast({
         title: "Error",
         description: error,

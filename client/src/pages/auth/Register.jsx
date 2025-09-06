@@ -38,7 +38,7 @@ const Register = () => {
   }, [isAuthenticated, user, setLocation]);
 
   useEffect(() => {
-    if (error) {
+    if (error && error !== null) {
       toast({
         title: 'Registration Failed',
         description: error,

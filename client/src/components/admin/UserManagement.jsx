@@ -33,6 +33,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import EditUserModal from './EditUserModal';
+import CreateUserModal from './CreateUserModal';
 
 const UserManagement = ({ searchQuery = '' }) => {
   const [users, setUsers] = useState([]);
@@ -41,6 +42,7 @@ const UserManagement = ({ searchQuery = '' }) => {
   const [selectedRole, setSelectedRole] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [editingUser, setEditingUser] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [usersPerPage] = useState(10);
   const { toast } = useToast();
@@ -205,10 +207,16 @@ const UserManagement = ({ searchQuery = '' }) => {
             <h2 className="text-2xl font-bold text-gray-900">User Management</h2>
             <p className="text-gray-600">Manage system users and their permissions</p>
           </div>
-          <div className="mt-4 md:mt-0">
+          <div className="flex items-center space-x-3 mt-4 md:mt-0">
             <Badge variant="outline" className="text-sm">
               {filteredUsers.length} users found
             </Badge>
+            <Button
+              onClick={() => setShowCreateModal(true)}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Create New User
+            </Button>
           </div>
         </div>
 
@@ -413,6 +421,16 @@ const UserManagement = ({ searchQuery = '' }) => {
         onClose={() => setEditingUser(null)}
         onUserUpdated={() => {
           setEditingUser(null);
+          fetchUsers();
+        }}
+      />
+
+      {/* Create User Modal */}
+      <CreateUserModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onUserCreated={() => {
+          setShowCreateModal(false);
           fetchUsers();
         }}
       />

@@ -7,6 +7,7 @@ import { storage } from "./storage";
 import { authenticateToken, authorizeRole } from "./middleware/auth.js";
 import { gradeShortAnswers } from "./services/aiGrading.js";
 import { insertUserSchema, insertExamSchema, insertQuestionSchema } from "@shared/schema";
+import { config, validateEnv } from "./config/env.js";
 // @ts-ignore
 import quizRoutes from "./routes/quiz.js";
 // @ts-ignore
@@ -26,7 +27,8 @@ import reportsRoutes from "./routes/reports.js";
 // @ts-ignore
 import exportRoutes from "./routes/export.js";
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+// Validate environment variables
+validateEnv();
 
 export function registerRoutes(app: Express): Server {
   // Health check endpoint
@@ -77,8 +79,8 @@ export function registerRoutes(app: Express): Server {
       // Generate JWT token
       const token = jwt.sign(
         { userId: user.id, email: user.email, role: user.role },
-        JWT_SECRET,
-        { expiresIn: '24h' }
+        config.jwt.secret,
+        { expiresIn: config.jwt.expiresIn }
       );
 
       // Remove password from response
@@ -108,8 +110,8 @@ export function registerRoutes(app: Express): Server {
       // Generate JWT token
       const token = jwt.sign(
         { userId: user.id, email: user.email, role: user.role },
-        JWT_SECRET,
-        { expiresIn: '24h' }
+        config.jwt.secret,
+        { expiresIn: config.jwt.expiresIn }
       );
 
       // Remove password from response
@@ -146,7 +148,7 @@ export function registerRoutes(app: Express): Server {
       
       if (token) {
         try {
-          const decoded = jwt.verify(token, JWT_SECRET) as any;
+          const decoded = jwt.verify(token, config.jwt.secret) as any;
           
           // Log logout activity if we have activity logging
           console.log(`User ${decoded.email} logged out at ${new Date().toISOString()}`);

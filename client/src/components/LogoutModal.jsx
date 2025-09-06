@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDispatch } from 'react-redux';
 import { useLocation } from 'wouter';
@@ -10,24 +10,75 @@ const LogoutModal = ({ isOpen, onClose }) => {
   const dispatch = useDispatch();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const renderCount = useRef(0);
+  const isExecuting = useRef(false);
 
-  // Handle logout confirmation
-  const handleLogout = async () => {
-    // Use the async logout thunk for smooth UX
-    await dispatch(logoutUser());
+  // Track component renders
+  renderCount.current += 1;
+  console.log(`🔄 LOGOUT MODAL RENDER #${renderCount.current} - isOpen:`, isOpen, 'isExecuting:', isExecuting.current);
+
+  // Track component mount/unmount
+  useEffect(() => {
+    console.log('🏗️ LOGOUT MODAL MOUNTED');
+    return () => {
+      console.log('🗑️ LOGOUT MODAL UNMOUNTED');
+    };
+  }, []);
+
+  // Track isOpen changes
+  useEffect(() => {
+    console.log('👁️ LOGOUT MODAL isOpen CHANGED:', isOpen);
+  }, [isOpen]);
+
+  // Handle logout confirmation with useCallback to prevent double execution
+  const handleLogout = useCallback(async () => {
+    console.log('🔘 LOGOUT MODAL - Button clicked, execution check:', isExecuting.current);
     
-    // Show success toast with green styling
-    toast({
-      title: "Logged out successfully! 🎉",
-      description: "You have been logged out successfully",
-      variant: "default",
-      className: "border-green-200 bg-green-50 text-green-800",
-    });
+    // Prevent double execution
+    if (isExecuting.current) {
+      console.log('🚫 LOGOUT MODAL - Already executing, ignoring click');
+      return;
+    }
     
-    // Close modal and redirect to homepage
+    isExecuting.current = true;
+    console.log('🔒 LOGOUT MODAL - Setting execution flag to true');
+    
+    // Prevent double execution by immediately closing modal
+    console.log('🚪 LOGOUT MODAL - Closing modal');
     onClose();
-    setLocation('/');
-  };
+    
+    try {
+      // Use the async logout thunk for smooth UX
+      console.log('🔄 LOGOUT MODAL - Dispatching logoutUser action');
+      const result = await dispatch(logoutUser());
+      console.log('📊 LOGOUT MODAL - Dispatch result:', result);
+      
+      // Show success toast with green styling
+      toast({
+        title: "Logged out successfully! 🎉",
+        description: "You have been logged out successfully",
+        variant: "default",
+        className: "border-green-200 bg-green-50 text-green-800",
+      });
+      
+      console.log('🏠 LOGOUT MODAL - Redirecting to homepage');
+      
+      // Add small delay to ensure Redux state is updated before redirect
+      setTimeout(() => {
+        setLocation('/');
+      }, 100);
+    } catch (error) {
+      console.error('💥 LOGOUT MODAL ERROR:', error);
+      
+      // Still redirect even if there's an error
+      setTimeout(() => {
+        setLocation('/');
+      }, 100);
+    } finally {
+      console.log('🔓 LOGOUT MODAL - Resetting execution flag');
+      isExecuting.current = false;
+    }
+  }, [dispatch, onClose, setLocation, toast]);
 
   return (
     <AnimatePresence>
@@ -83,7 +134,10 @@ const LogoutModal = ({ isOpen, onClose }) => {
                     Cancel
                   </button>
                   <button
-                    onClick={handleLogout}
+                    onClick={() => {
+                      console.log('🖱️ LOGOUT BUTTON CLICKED - Event triggered');
+                      handleLogout();
+                    }}
                     className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center space-x-2"
                   >
                     <LogOut className="w-4 h-4" />

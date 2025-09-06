@@ -17,13 +17,16 @@ const GuestHomepage = () => {
   const { isAuthenticated, user, isLoading } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    // Check if user is already authenticated
-    dispatch(checkAuth());
-  }, [dispatch]);
+    // Only check auth if not already authenticated to prevent re-renders
+    if (!isAuthenticated) {
+      console.log('🔍 HOMEPAGE: Checking authentication status');
+      dispatch(checkAuth());
+    }
+  }, [dispatch, isAuthenticated]);
 
   useEffect(() => {
-    // Redirect authenticated users to their dashboard
-    if (isAuthenticated && user) {
+    // Redirect authenticated users to their dashboard - but not during logout
+    if (isAuthenticated && user && !isLoading) {
       console.log('🏠 HOMEPAGE: Redirecting authenticated user:', user.role);
       const dashboardRoutes = {
         admin: '/admin/dashboard',
@@ -34,7 +37,7 @@ const GuestHomepage = () => {
       console.log('🏠 HOMEPAGE: Redirecting to:', targetRoute);
       setLocation(targetRoute);
     }
-  }, [isAuthenticated, user, setLocation]);
+  }, [isAuthenticated, user, setLocation, isLoading]);
 
   const openAuthModal = (mode = 'login') => {
     setAuthMode(mode);

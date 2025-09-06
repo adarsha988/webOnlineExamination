@@ -48,7 +48,7 @@ const Login = () => {
   }, [isAuthenticated, user, setLocation]);
 
   useEffect(() => {
-    if (error) {
+    if (error && error !== null) {
       toast({
         title: 'Login Failed',
         description: error,
