@@ -16,8 +16,8 @@ const InstructorDashboard = () => {
     dispatch(fetchExams());
   }, [dispatch]);
 
-  // Filter exams for current instructor
-  const instructorExams = exams.filter(exam => exam.instructorId === user?.id);
+  // Filter exams for current instructor - ensure exams is an array
+  const instructorExams = Array.isArray(exams) ? exams.filter(exam => exam.instructorId === user?.id) : [];
   const recentExams = instructorExams.slice(0, 4);
 
   // Calculate stats
@@ -118,12 +118,20 @@ const InstructorDashboard = () => {
             <h1 className="text-3xl font-bold text-foreground">Instructor Dashboard</h1>
             <p className="text-muted-foreground">Manage your examinations and track student progress</p>
           </div>
-          <Link href="/instructor/exam/create">
-            <Button className="flex items-center" data-testid="button-create-exam">
-              <Plus className="h-4 w-4 mr-2" />
-              Create New Exam
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link href="/instructor/exams">
+              <Button variant="outline">
+                <Eye className="h-4 w-4 mr-2" />
+                View All Exams
+              </Button>
+            </Link>
+            <Link href="/instructor/exam-creation">
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="h-4 w-4 mr-2" />
+                Create Exam
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* Stats Overview */}

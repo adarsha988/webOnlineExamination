@@ -21,7 +21,20 @@ const activitySchema = new mongoose.Schema({
       'password_changed',
       'role_changed',
       'user_deactivated',
-      'user_activated'
+      'user_activated',
+      'question_created',
+      'question_updated',
+      'question_deleted',
+      'question_approved',
+      'question_suggested',
+      'question_imported',
+      'question_exported',
+      'shared_bank_created',
+      'shared_bank_updated',
+      'shared_bank_deleted',
+      'collaborator_added',
+      'collaborator_removed',
+      'permission_changed'
     ],
     required: true
   },

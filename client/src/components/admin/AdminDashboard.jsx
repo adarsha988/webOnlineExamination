@@ -25,6 +25,7 @@ import RecentActivity from './RecentActivity';
 import UserManagement from './UserManagement';
 import ReportsSection from './ReportsSection';
 import AddUserModal from './AddUserModal';
+import NotificationBell from './NotificationBell';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -200,9 +201,7 @@ const AdminDashboard = () => {
               </div>
               
               {/* Notifications */}
-              <Button variant="ghost" size="sm">
-                <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
-              </Button>
+              <NotificationBell />
 
               {/* User Profile & Logout */}
               <div className="relative flex items-center space-x-2">

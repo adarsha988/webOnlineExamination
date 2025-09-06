@@ -1,7 +1,8 @@
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
+import { config } from '../config/env.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const JWT_SECRET = config.jwt.secret;
 
 // Extend Express Request type to include user property
 declare global {

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useSelector } from 'react-redux';
 import { LogOut, User } from 'lucide-react';
 import LogoutModal from '../components/LogoutModal';
+import NotificationBell from '../components/admin/NotificationBell';
 
 const AdminLayout = ({ children }) => {
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
@@ -16,8 +17,9 @@ const AdminLayout = ({ children }) => {
               <h1 className="text-xl font-semibold text-gray-900">Admin Dashboard</h1>
             </div>
             
-            {/* User Info & Logout */}
+            {/* Notifications & User Info & Logout */}
             <div className="flex items-center space-x-4">
+              <NotificationBell />
               <div className="flex items-center space-x-2 text-gray-700">
                 <User className="w-4 h-4" />
                 <span className="text-sm font-medium">{user?.name}</span>

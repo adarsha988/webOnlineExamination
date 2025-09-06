@@ -26,8 +26,13 @@ const UserManagement = () => {
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
-      const response = await api.get('/admin/users');
-      setUsers(response.data);
+      const response = await fetch('/api/users?limit=1000');
+      const data = await response.json();
+      if (response.ok) {
+        setUsers(data.users || []);
+      } else {
+        console.error('Failed to fetch users:', data.message);
+      }
     } catch (error) {
       console.error('Failed to fetch users:', error);
     } finally {
@@ -102,10 +107,6 @@ const UserManagement = () => {
             <h1 className="text-3xl font-bold text-foreground">User Management</h1>
             <p className="text-muted-foreground">Manage system users and their roles</p>
           </div>
-          <Button className="bg-primary text-primary-foreground hover:bg-primary/90" data-testid="button-add-user">
-            <UserPlus className="h-4 w-4 mr-2" />
-            Add User
-          </Button>
         </div>
 
         {/* Stats Overview */}

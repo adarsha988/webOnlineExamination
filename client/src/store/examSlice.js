@@ -134,7 +134,8 @@ const examSlice = createSlice({
       })
       .addCase(fetchExams.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.exams = action.payload;
+        // Handle both array and object responses from API
+        state.exams = Array.isArray(action.payload) ? action.payload : (action.payload.exams || []);
       })
       .addCase(fetchExams.rejected, (state, action) => {
         state.isLoading = false;

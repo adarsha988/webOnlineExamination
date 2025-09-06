@@ -1,5 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
+// @ts-ignore
+import NotificationService from "./services/notificationService.js";
 import { setupVite, serveStatic, log } from "./vite";
 import { config } from "./config/env.js";
 // @ts-ignore
@@ -102,5 +104,7 @@ app.use((req, res, next) => {
     await autoSeed();
     // Seed MongoDB collections
     await seedMongoData();
+    // Seed notifications
+    await NotificationService.seedNotifications();
   });
 })();

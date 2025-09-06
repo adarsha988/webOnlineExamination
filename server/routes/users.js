@@ -6,33 +6,60 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { config } from '../config/env.js';
 
-// GET /api/users - Get all users with pagination and filtering
+// GET /api/users - Get all users with pagination and filtering using aggregation pipeline
 router.get('/', async (req, res) => {
   try {
     const { page = 1, limit = 10, role, status, search } = req.query;
-    const query = {};
+    const pipeline = [];
     
-    if (role) query.role = role;
-    if (status) query.status = status;
+    // Match stage for filtering
+    const matchStage = {};
+    if (role && role !== 'all') matchStage.role = role;
+    if (status && status !== 'all') matchStage.status = status;
+    
     if (search) {
-      query.$or = [
+      matchStage.$or = [
         { name: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } }
       ];
     }
     
-    const users = await User.find(query)
-      .select('-password')
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
+    if (Object.keys(matchStage).length > 0) {
+      pipeline.push({ $match: matchStage });
+    }
     
-    const total = await User.countDocuments(query);
+    // Add fields for better sorting and display
+    pipeline.push({
+      $addFields: {
+        id: '$_id'
+      }
+    });
+    
+    // Remove password field
+    pipeline.push({
+      $project: {
+        password: 0
+      }
+    });
+    
+    // Sort by creation date (newest first)
+    pipeline.push({ $sort: { createdAt: -1 } });
+    
+    // Get total count for pagination
+    const totalPipeline = [...pipeline, { $count: 'total' }];
+    const totalResult = await User.aggregate(totalPipeline);
+    const total = totalResult.length > 0 ? totalResult[0].total : 0;
+    
+    // Add pagination
+    pipeline.push({ $skip: (page - 1) * limit });
+    pipeline.push({ $limit: parseInt(limit) });
+    
+    const users = await User.aggregate(pipeline);
     
     res.json({
       users,
       totalPages: Math.ceil(total / limit),
-      currentPage: page,
+      currentPage: parseInt(page),
       total
     });
   } catch (error) {
@@ -156,32 +183,61 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// PATCH /api/users/:id/deactivate - Deactivate user
-router.patch('/:id/deactivate', async (req, res) => {
+// PUT /api/users/:id/deactivate - Deactivate user
+router.put('/:id/deactivate', async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
     
-    user.status = user.status === 'active' ? 'inactive' : 'active';
+    user.status = 'inactive';
     await user.save();
     
     // Log activity
     await new Activity({
       user: user._id,
-      type: user.status === 'active' ? 'user_activated' : 'user_deactivated',
-      description: `User ${user.status === 'active' ? 'activated' : 'deactivated'}: ${user.name}`,
-      metadata: { previousStatus: user.status === 'active' ? 'inactive' : 'active' }
+      type: 'user_deactivated',
+      description: `User deactivated: ${user.name}`,
+      metadata: { previousStatus: 'active' }
     }).save();
     
     res.json({ 
-      message: `User ${user.status === 'active' ? 'activated' : 'deactivated'} successfully`, 
+      message: 'User deactivated successfully', 
       status: user.status 
     });
   } catch (error) {
-    console.error('Error updating user status:', error);
-    res.status(500).json({ message: 'Error updating user status', error: error.message });
+    console.error('Error deactivating user:', error);
+    res.status(500).json({ message: 'Error deactivating user', error: error.message });
+  }
+});
+
+// PUT /api/users/:id/reactivate - Reactivate user
+router.put('/:id/reactivate', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    user.status = 'active';
+    await user.save();
+    
+    // Log activity
+    await new Activity({
+      user: user._id,
+      type: 'user_activated',
+      description: `User reactivated: ${user.name}`,
+      metadata: { previousStatus: 'inactive' }
+    }).save();
+    
+    res.json({ 
+      message: 'User reactivated successfully', 
+      status: user.status 
+    });
+  } catch (error) {
+    console.error('Error reactivating user:', error);
+    res.status(500).json({ message: 'Error reactivating user', error: error.message });
   }
 });
 
@@ -211,8 +267,8 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// PATCH /api/users/:id/password - Change user password
-router.patch('/:id/password', async (req, res) => {
+// PATCH /api/users/:id/reset-password - Reset user password
+router.patch('/:id/reset-password', async (req, res) => {
   try {
     const { newPassword } = req.body;
     

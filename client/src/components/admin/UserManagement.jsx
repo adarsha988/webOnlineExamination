@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Search, 
@@ -35,31 +35,53 @@ import {
 import EditUserModal from './EditUserModal';
 import CreateUserModal from './CreateUserModal';
 
-const UserManagement = ({ searchQuery = '' }) => {
+const UserManagement = ({ searchQuery = '', defaultRole = 'all' }) => {
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [allUsers, setAllUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
-  const [selectedRole, setSelectedRole] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const [selectedRole, setSelectedRole] = useState(defaultRole);
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [editingUser, setEditingUser] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [usersPerPage] = useState(10);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
   const { toast } = useToast();
 
+  // Load all users once on component mount
   useEffect(() => {
-    fetchUsers();
+    fetchAllUsers();
   }, []);
 
+  // Filter users locally when search, role, or status changes
   useEffect(() => {
     filterUsers();
-  }, [users, searchQuery, selectedRole, selectedStatus]);
+  }, [localSearchQuery, selectedRole, selectedStatus, allUsers]);
 
-  const fetchUsers = async () => {
+  useEffect(() => {
+    setLocalSearchQuery(searchQuery);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setSelectedRole(defaultRole);
+  }, [defaultRole]);
+
+  const fetchAllUsers = async () => {
     try {
-      const response = await fetch('/api/users');
+      setLoading(true);
+      const response = await fetch('/api/users?limit=1000'); // Fetch all users
       const data = await response.json();
-      setUsers(data.users || []);
+      
+      if (response.ok) {
+        setAllUsers(data.users || []);
+        setTotalUsers(data.total || 0);
+      } else {
+        fetchAllUsers();
+      }
     } catch (error) {
       console.error('Error fetching users:', error);
       toast({
@@ -73,29 +95,56 @@ const UserManagement = ({ searchQuery = '' }) => {
   };
 
   const filterUsers = () => {
-    let filtered = users;
+    let filtered = [...allUsers];
 
-    // Search filter
-    if (searchQuery) {
-      filtered = filtered.filter(user => 
-        user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.email?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    // Role filter
+    // Filter by role
     if (selectedRole !== 'all') {
       filtered = filtered.filter(user => user.role === selectedRole);
     }
 
-    // Status filter
+    // Filter by status
     if (selectedStatus !== 'all') {
       filtered = filtered.filter(user => user.status === selectedStatus);
     }
 
-    setFilteredUsers(filtered);
-    setCurrentPage(1);
+    // Filter by search query (name or email)
+    if (localSearchQuery.trim()) {
+      const query = localSearchQuery.toLowerCase();
+      filtered = filtered.filter(user => 
+        user.name.toLowerCase().includes(query) ||
+        user.email.toLowerCase().includes(query)
+      );
+    }
+
+    // Calculate pagination
+    const startIndex = (currentPage - 1) * usersPerPage;
+    const endIndex = startIndex + usersPerPage;
+    const paginatedUsers = filtered.slice(startIndex, endIndex);
+
+    setUsers(paginatedUsers);
+    setFilteredUsers(paginatedUsers);
+    setTotalPages(Math.ceil(filtered.length / usersPerPage));
   };
+
+  const handleSearch = useCallback((searchTerm) => {
+    setLocalSearchQuery(searchTerm);
+    setCurrentPage(1);
+  }, []);
+
+  const handleRoleChange = useCallback((role) => {
+    setSelectedRole(role);
+    setCurrentPage(1);
+  }, []);
+
+  const handleStatusChange = useCallback((status) => {
+    setSelectedStatus(status);
+    setCurrentPage(1);
+  }, []);
+
+  // Update pagination when page changes
+  useEffect(() => {
+    filterUsers();
+  }, [currentPage]);
 
   const handleUserAction = async (userId, action) => {
     try {
@@ -129,14 +178,14 @@ const UserManagement = ({ searchQuery = '' }) => {
       });
 
       if (response.ok) {
-        await fetchUsers();
+        await fetchAllUsers();
         toast({
           title: "Success",
           description: `User ${action}d successfully`,
           variant: "default"
         });
       } else {
-        throw new Error(`Failed to ${action} user`);
+        fetchAllUsers();
       }
     } catch (error) {
       console.error(`Error ${action}ing user:`, error);
@@ -171,11 +220,38 @@ const UserManagement = ({ searchQuery = '' }) => {
     return new Date(dateString).toLocaleDateString();
   };
 
-  // Pagination
-  const indexOfLastUser = currentPage * usersPerPage;
-  const indexOfFirstUser = indexOfLastUser - usersPerPage;
-  const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
-  const totalPages = Math.ceil(filteredUsers.length / usersPerPage);
+  const handleResetPassword = async (userId) => {
+    try {
+      const newPassword = Math.random().toString(36).slice(-8);
+      const response = await fetch(`/api/users/${userId}/reset-password`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ newPassword }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: `Password reset successfully. New password: ${newPassword}`,
+          variant: "default"
+        });
+      } else {
+        throw new Error('Failed to reset password');
+      }
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reset password",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Use users directly since pagination is handled by API
+  const currentUsers = users;
 
   if (loading) {
     return (
@@ -209,7 +285,7 @@ const UserManagement = ({ searchQuery = '' }) => {
           </div>
           <div className="flex items-center space-x-3 mt-4 md:mt-0">
             <Badge variant="outline" className="text-sm">
-              {filteredUsers.length} users found
+              {totalUsers} users found
             </Badge>
             <Button
               onClick={() => setShowCreateModal(true)}
@@ -229,15 +305,15 @@ const UserManagement = ({ searchQuery = '' }) => {
                 type="text"
                 placeholder="Search users by name or email..."
                 className="pl-10"
-                value={searchQuery}
-                readOnly
+                value={localSearchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
               />
             </div>
           </div>
           
           <select
             value={selectedRole}
-            onChange={(e) => setSelectedRole(e.target.value)}
+            onChange={(e) => handleRoleChange(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="all">All Roles</option>
@@ -248,7 +324,7 @@ const UserManagement = ({ searchQuery = '' }) => {
           
           <select
             value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
+            onChange={(e) => handleStatusChange(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="all">All Status</option>
@@ -339,7 +415,7 @@ const UserManagement = ({ searchQuery = '' }) => {
                           <Eye className="h-4 w-4 mr-2" />
                           View Details
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => console.log('Reset password:', user)}>
+                        <DropdownMenuItem onClick={() => handleResetPassword(user.id)}>
                           <Key className="h-4 w-4 mr-2" />
                           Reset Password
                         </DropdownMenuItem>
@@ -380,7 +456,7 @@ const UserManagement = ({ searchQuery = '' }) => {
         {totalPages > 1 && (
           <div className="flex items-center justify-between mt-6">
             <div className="text-sm text-gray-600">
-              Showing {indexOfFirstUser + 1} to {Math.min(indexOfLastUser, filteredUsers.length)} of {filteredUsers.length} users
+              Showing {((currentPage - 1) * usersPerPage) + 1} to {Math.min(currentPage * usersPerPage, totalUsers)} of {totalUsers} users
             </div>
             <div className="flex space-x-2">
               <Button

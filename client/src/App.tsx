@@ -22,9 +22,27 @@ import InstructorExamCreator from "@/pages/instructor/ExamCreator.jsx";
 // @ts-ignore
 import InstructorQuestionBuilder from "@/pages/instructor/QuestionBuilder.jsx";
 // @ts-ignore
+import QuestionBank from './pages/instructor/QuestionBank';
+// @ts-ignore
+import ExamCreation from './pages/instructor/ExamCreation';
+// @ts-ignore
+import ExamList from './pages/instructor/ExamList';
+// @ts-ignore
+import EditExam from './pages/instructor/EditExam';
+// @ts-ignore
 import AdminDashboard from "@/pages/admin/Dashboard.jsx";
 // @ts-ignore
 import AdminUserManagement from "@/pages/admin/UserManagement.jsx";
+// @ts-ignore
+import StudentsPage from "@/components/admin/StudentsPage.jsx";
+// @ts-ignore
+import InstructorsPage from "@/components/admin/InstructorsPage.jsx";
+// @ts-ignore
+import ActiveTodayPage from "@/components/admin/ActiveTodayPage.jsx";
+// @ts-ignore
+import SystemAnalyticsPage from "@/components/admin/SystemAnalyticsPage.jsx";
+// @ts-ignore
+import ExamsPage from "@/components/admin/ExamsPage.jsx";
 
 function Router() {
   return (
@@ -62,6 +80,26 @@ function Router() {
           <InstructorQuestionBuilder />
         </ProtectedRoute>
       )} />
+      <Route path="/instructor/question-bank">
+        <ProtectedRoute allowedRoles={['instructor', 'admin']}>
+          <QuestionBank />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/instructor/exam-creation">
+        <ProtectedRoute allowedRoles={['instructor', 'admin']}>
+          <ExamCreation />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/instructor/exams">
+        <ProtectedRoute allowedRoles={['instructor', 'admin']}>
+          <ExamList />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/instructor/exams/:id/edit">
+        <ProtectedRoute allowedRoles={['instructor', 'admin']}>
+          <EditExam />
+        </ProtectedRoute>
+      </Route>
       
       {/* Admin Routes */}
       <Route path="/admin/dashboard" component={() => (
@@ -72,6 +110,31 @@ function Router() {
       <Route path="/admin/users" component={() => (
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminUserManagement />
+        </ProtectedRoute>
+      )} />
+      <Route path="/admin/students" component={() => (
+        <ProtectedRoute allowedRoles={['admin']}>
+          <StudentsPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/admin/instructors" component={() => (
+        <ProtectedRoute allowedRoles={['admin']}>
+          <InstructorsPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/admin/analytics" component={() => (
+        <ProtectedRoute allowedRoles={['admin']}>
+          <ActiveTodayPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/admin/system-analytics" component={() => (
+        <ProtectedRoute allowedRoles={['admin']}>
+          <SystemAnalyticsPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/admin/exams" component={() => (
+        <ProtectedRoute allowedRoles={['admin']}>
+          <ExamsPage />
         </ProtectedRoute>
       )} />
       

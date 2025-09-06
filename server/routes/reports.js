@@ -5,8 +5,8 @@ import User from '../models/user.model.js';
 import Exam from '../models/exam.model.js';
 import Activity from '../models/activity.model.js';
 
-// GET /api/reports/usage-analytics - Usage analytics report
-router.get('/usage-analytics', async (req, res) => {
+// GET /api/reports/usage - Usage analytics report
+router.get('/usage', async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     const start = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -102,8 +102,8 @@ router.get('/usage-analytics', async (req, res) => {
   }
 });
 
-// GET /api/reports/academic-performance - Academic performance report
-router.get('/academic-performance', async (req, res) => {
+// GET /api/reports/academic - Academic performance report
+router.get('/academic', async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     const start = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
@@ -219,8 +219,67 @@ router.get('/academic-performance', async (req, res) => {
   }
 });
 
-// GET /api/reports/security-audit - Security audit report
-router.get('/security-audit', async (req, res) => {
+// POST /api/reports/generate - Generate a new report
+router.post('/generate', async (req, res) => {
+  try {
+    const { type, startDate, endDate } = req.body;
+    
+    if (!type) {
+      return res.status(400).json({ message: 'Report type is required' });
+    }
+    
+    // Redirect to appropriate report endpoint based on type
+    let reportData;
+    
+    if (type === 'usage') {
+      // Call usage report logic
+      const response = await fetch(`http://localhost:5000/api/reports/usage?startDate=${startDate}&endDate=${endDate}`);
+      reportData = await response.json();
+    } else if (type === 'academic') {
+      // Call academic report logic
+      const response = await fetch(`http://localhost:5000/api/reports/academic?startDate=${startDate}&endDate=${endDate}`);
+      reportData = await response.json();
+    } else if (type === 'security') {
+      // Call security report logic
+      const response = await fetch(`http://localhost:5000/api/reports/security?startDate=${startDate}&endDate=${endDate}`);
+      reportData = await response.json();
+    } else {
+      return res.status(400).json({ message: 'Invalid report type. Use: usage, academic, or security' });
+    }
+    
+    // Save the generated report
+    const report = new Report({
+      type,
+      title: `${type.charAt(0).toUpperCase() + type.slice(1)} Report - ${new Date().toLocaleDateString()}`,
+      description: `Generated ${type} report for ${startDate || 'last 30 days'} to ${endDate || 'today'}`,
+      data: reportData,
+      generatedBy: req.user?.id || null, // Assuming user is available in req
+      dateRange: {
+        start: startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        end: endDate ? new Date(endDate) : new Date()
+      }
+    });
+    
+    await report.save();
+    
+    res.status(201).json({ 
+      message: 'Report generated successfully', 
+      report: {
+        id: report._id,
+        type: report.type,
+        title: report.title,
+        createdAt: report.createdAt,
+        data: reportData
+      }
+    });
+  } catch (error) {
+    console.error('Error generating report:', error);
+    res.status(500).json({ message: 'Error generating report', error: error.message });
+  }
+});
+
+// GET /api/reports/security - Security audit report
+router.get('/security', async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     const start = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);

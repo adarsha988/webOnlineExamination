@@ -131,7 +131,7 @@ const AddUserModal = ({ isOpen, onClose, onUserAdded }) => {
 
   const roles = [
     { value: 'student', label: 'Student' },
-    { value: 'teacher', label: 'Teacher' },
+    { value: 'instructor', label: 'Instructor' },
     { value: 'admin', label: 'Administrator' }
   ];
 

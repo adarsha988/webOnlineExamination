@@ -26,6 +26,14 @@ import activitiesRoutes from "./routes/activities.js";
 import reportsRoutes from "./routes/reports.js";
 // @ts-ignore
 import exportRoutes from "./routes/export.js";
+// @ts-ignore
+import examsRoutes from "./routes/exams.js";
+// @ts-ignore
+import notificationsRoutes from "./routes/notifications.js";
+// @ts-ignore
+import questionsRoutes from "./routes/questions.js";
+// @ts-ignore
+import sharedBanksRoutes from "./routes/sharedBanks.js";
 
 // Validate environment variables
 validateEnv();
@@ -49,10 +57,16 @@ export function registerRoutes(app: Express): Server {
   // Admin API Routes
   app.use('/api/stats', statsRoutes);
   app.use('/api/users', usersRoutes);
+  app.use('/api/exams', examsRoutes);
+  app.use('/api/notifications', notificationsRoutes);
   app.use('/api/activities', activitiesRoutes);
   app.use('/api/recent-activities', activitiesRoutes); // Alias for activities
   app.use('/api/reports', reportsRoutes);
   app.use('/api/export', exportRoutes);
+  
+  // Instructor API Routes
+  app.use('/api/questions', questionsRoutes);
+  app.use('/api/shared-banks', sharedBanksRoutes);
 
   // Authentication routes
   app.post('/api/auth/register', async (req, res) => {

@@ -41,8 +41,13 @@ const examSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['draft', 'published', 'archived'],
+    enum: ['draft', 'published', 'completed', 'inactive'],
     default: 'draft'
+  },
+  instructorId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
   },
   scheduledDate: {
     type: Date,
