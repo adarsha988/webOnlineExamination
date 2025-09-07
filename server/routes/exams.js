@@ -56,6 +56,93 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/exams/upcoming - Get upcoming exams for students
+router.get('/upcoming', authenticateToken, async (req, res) => {
+  try {
+    const { studentId } = req.query;
+    const now = new Date();
+    
+    const upcomingExams = await Exam.find({
+      examDate: { $gt: now },
+      status: { $in: ['published', 'upcoming'] },
+      $or: [
+        { assignedStudents: studentId },
+        { assignedStudents: { $exists: false } }, // Public exams
+        { assignedStudents: { $size: 0 } } // Public exams
+      ]
+    })
+    .populate('instructorId', 'name email')
+    .populate('questions')
+    .sort({ examDate: 1 })
+    .lean();
+
+    // Add computed fields
+    const enrichedExams = upcomingExams.map(exam => ({
+      ...exam,
+      id: exam._id,
+      timeUntilExam: Math.floor((exam.examDate - now) / (1000 * 60 * 60 * 24)), // days
+      canTake: true,
+      instructor: exam.instructorId
+    }));
+
+    res.json({
+      success: true,
+      data: enrichedExams,
+      count: enrichedExams.length
+    });
+  } catch (error) {
+    console.error('Error fetching upcoming exams:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error fetching upcoming exams', 
+      error: error.message 
+    });
+  }
+});
+
+// GET /api/exams/recent - Get recent/completed exams for students
+router.get('/recent', authenticateToken, async (req, res) => {
+  try {
+    const { studentId } = req.query;
+    const now = new Date();
+    
+    const recentExams = await Exam.find({
+      examDate: { $lt: now },
+      status: { $in: ['completed', 'ongoing'] },
+      $or: [
+        { assignedStudents: studentId },
+        { assignedStudents: { $exists: false } },
+        { assignedStudents: { $size: 0 } }
+      ]
+    })
+    .populate('instructorId', 'name email')
+    .sort({ examDate: -1 })
+    .limit(10)
+    .lean();
+
+    // Add computed fields
+    const enrichedExams = recentExams.map(exam => ({
+      ...exam,
+      id: exam._id,
+      daysSinceExam: Math.floor((now - exam.examDate) / (1000 * 60 * 60 * 24)),
+      instructor: exam.instructorId
+    }));
+
+    res.json({
+      success: true,
+      data: enrichedExams,
+      count: enrichedExams.length
+    });
+  } catch (error) {
+    console.error('Error fetching recent exams:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Error fetching recent exams', 
+      error: error.message 
+    });
+  }
+});
+
 // GET /api/exams/instructor/:instructorId - Get exams by instructor
 router.get('/instructor/:instructorId', authenticateToken, async (req, res) => {
   try {

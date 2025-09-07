@@ -32,7 +32,7 @@ const examSchema = new mongoose.Schema({
   },
   questions: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Quiz'
+    ref: 'Question'
   }],
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -41,13 +41,17 @@ const examSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['draft', 'published', 'completed', 'inactive'],
+    enum: ['draft', 'published', 'ongoing', 'completed', 'upcoming', 'inactive'],
     default: 'draft'
   },
   instructorId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
+  },
+  examDate: {
+    type: Date,
+    default: null
   },
   scheduledDate: {
     type: Date,
@@ -57,6 +61,10 @@ const examSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  assignedStudents: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }],
   attempts: [{
     student: {
       type: mongoose.Schema.Types.ObjectId,

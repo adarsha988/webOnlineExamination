@@ -8,23 +8,51 @@ import Notification from '../models/notification.model.js';
 
 const router = express.Router();
 
+// Helper function to find user by email or ID
+const findUserByIdentifier = async (identifier) => {
+  try {
+    // First try to find by email
+    let user = await User.findOne({ email: identifier });
+    if (user) return user;
+    
+    // If not found and identifier looks like ObjectId, try by _id
+    if (mongoose.Types.ObjectId.isValid(identifier)) {
+      user = await User.findById(identifier);
+      if (user) return user;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error finding user:', error);
+    return null;
+  }
+};
+
 // Get student's upcoming exams
 router.get('/student/:studentId/exams/upcoming', async (req, res) => {
   try {
     const { studentId } = req.params;
     
+    const user = await findUserByIdentifier(studentId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found'
+      });
+    }
+    
+    // For now, return all upcoming exams since assignedStudents might not be properly set
     const upcomingExams = await Exam.find({
-      status: 'upcoming',
-      assignedStudents: studentId
+      status: 'upcoming'
     })
-    .populate('instructor', 'name email')
+    .populate('instructorId', 'name email')
     .populate('questions')
-    .sort({ startDate: 1 });
+    .sort({ scheduledDate: 1 });
 
     // Check if student has records for these exams
     const examIds = upcomingExams.map(exam => exam._id);
     const studentExams = await StudentExam.find({
-      student: studentId,
+      student: user._id,
       exam: { $in: examIds }
     });
 
@@ -59,18 +87,26 @@ router.get('/student/:studentId/exams/ongoing', async (req, res) => {
   try {
     const { studentId } = req.params;
     
+    const user = await findUserByIdentifier(studentId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found'
+      });
+    }
+    
+    // For now, return all ongoing exams since assignedStudents might not be properly set
     const ongoingExams = await Exam.find({
-      status: 'ongoing',
-      assignedStudents: studentId
+      status: 'ongoing'
     })
-    .populate('instructor', 'name email')
+    .populate('instructorId', 'name email')
     .populate('questions')
-    .sort({ startDate: 1 });
+    .sort({ scheduledDate: 1 });
 
     // Get student exam records for ongoing exams
     const examIds = ongoingExams.map(exam => exam._id);
     const studentExams = await StudentExam.find({
-      student: studentId,
+      student: user._id,
       exam: { $in: examIds },
       status: 'in_progress'
     });
@@ -82,10 +118,9 @@ router.get('/student/:studentId/exams/ongoing', async (req, res) => {
 
     const enrichedExams = ongoingExams.map(exam => ({
       ...exam.toObject(),
-      studentStatus: studentExamMap[exam._id.toString()]?.status || 'not_started',
-      progress: studentExamMap[exam._id.toString()]?.answers?.length || 0,
-      totalQuestions: exam.questions.length,
-      canResume: studentExamMap[exam._id.toString()]?.status === 'in_progress'
+      studentExam: studentExamMap[exam._id.toString()],
+      timeRemaining: studentExamMap[exam._id.toString()]?.timeRemaining || exam.duration * 60,
+      canContinue: !!studentExamMap[exam._id.toString()]
     }));
 
     res.json({
@@ -107,14 +142,22 @@ router.get('/student/:studentId/exams/completed', async (req, res) => {
   try {
     const { studentId } = req.params;
     
+    const user = await findUserByIdentifier(studentId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found'
+      });
+    }
+    
     const completedExams = await StudentExam.find({
-      student: studentId,
+      student: user._id,
       status: 'completed'
     })
     .populate({
       path: 'exam',
       populate: {
-        path: 'instructor',
+        path: 'instructorId',
         select: 'name email'
       }
     })
@@ -123,52 +166,6 @@ router.get('/student/:studentId/exams/completed', async (req, res) => {
     res.json({
       success: true,
       data: completedExams
-    });
-  } catch (error) {
-    console.error('Error fetching completed exams:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch upcoming exams',
-      error: error.message
-    });
-  }
-});
-
-
-router.get('/student/:studentId/exams/completed', async (req, res) => {
-  try {
-    const { studentId } = req.params;
-    const { page = 1, limit = 10 } = req.query;
-    
-    const completedStudentExams = await StudentExam.find({
-      student: studentId,
-      status: 'completed'
-    })
-    .populate({
-      path: 'exam',
-      populate: {
-        path: 'instructor',
-        select: 'name email'
-      }
-    })
-    .sort({ submittedAt: -1 })
-    .limit(limit * 1)
-    .skip((page - 1) * limit);
-
-    const total = await StudentExam.countDocuments({
-      student: studentId,
-      status: 'completed'
-    });
-
-    res.json({
-      success: true,
-      data: completedStudentExams,
-      pagination: {
-        current: parseInt(page),
-        total: Math.ceil(total / limit),
-        count: completedStudentExams.length,
-        totalRecords: total
-      }
     });
   } catch (error) {
     console.error('Error fetching completed exams:', error);
@@ -184,64 +181,45 @@ router.get('/student/:studentId/exams/completed', async (req, res) => {
 router.get('/student/:studentId/notifications', async (req, res) => {
   try {
     const { studentId } = req.params;
-    const { page = 1, limit = 5, unreadOnly = false } = req.query;
+    const { page = 1, limit = 10 } = req.query;
     
-    const query = {
-      $or: [
-        { user: studentId }, // User-specific notifications
-        { user: null }       // Global notifications
-      ]
-    };
-    
-    if (unreadOnly === 'true') {
-      query.isRead = false;
+    const user = await findUserByIdentifier(studentId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found'
+      });
     }
     
-    const notifications = await Notification.find(query)
-      .sort({ createdAt: -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
-      .lean();
-    
-    const total = await Notification.countDocuments(query);
-    const unreadCount = await Notification.countDocuments({
-      ...query,
-      isRead: false
+    const notifications = await Notification.find({
+      recipient: user._id
+    })
+    .sort({ createdAt: -1 })
+    .limit(limit * 1)
+    .skip((page - 1) * limit);
+
+    const total = await Notification.countDocuments({
+      recipient: user._id
     });
-    
-    // Add timeAgo to each notification
-    const getTimeAgo = (date) => {
-      const now = new Date();
-      const diff = now - date;
-      const minutes = Math.floor(diff / 60000);
-      const hours = Math.floor(diff / 3600000);
-      const days = Math.floor(diff / 86400000);
-      
-      if (minutes < 1) return 'Just now';
-      if (minutes < 60) return `${minutes}m ago`;
-      if (hours < 24) return `${hours}h ago`;
-      if (days < 7) return `${days}d ago`;
-      return date.toLocaleDateString();
-    };
-    
-    const notificationsWithTime = notifications.map(notification => ({
-      ...notification,
-      timeAgo: getTimeAgo(notification.createdAt)
-    }));
-    
+
+    const unreadCount = await Notification.countDocuments({
+      recipient: user._id,
+      read: false
+    });
+
     res.json({
       success: true,
-      data: notificationsWithTime,
+      data: notifications,
       pagination: {
         current: parseInt(page),
         total: Math.ceil(total / limit),
-        count: notificationsWithTime.length,
+        count: notifications.length,
         totalRecords: total
       },
-      unreadCount
+      unreadCount: unreadCount
     });
   } catch (error) {
-    console.error('Error fetching student notifications:', error);
+    console.error('Error fetching notifications:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch notifications',
@@ -250,87 +228,20 @@ router.get('/student/:studentId/notifications', async (req, res) => {
   }
 });
 
-// Delete notification
-router.delete('/student/:studentId/notifications/:notificationId', async (req, res) => {
+// Start exam
+router.post('/student/:studentId/exam/:examId/start', async (req, res) => {
   try {
-    const { studentId, notificationId } = req.params;
+    const { studentId, examId } = req.params;
     
-    // Find and delete the notification
-    const notification = await Notification.findOneAndDelete({
-      _id: notificationId,
-      $or: [
-        { user: studentId }, // User-specific notifications
-        { user: null }       // Global notifications (can be deleted by any user)
-      ]
-    });
-    
-    if (!notification) {
+    const user = await findUserByIdentifier(studentId);
+    if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'Notification not found or not authorized to delete'
+        message: 'Student not found'
       });
     }
-    
-    res.json({
-      success: true,
-      message: 'Notification deleted successfully'
-    });
-  } catch (error) {
-    console.error('Error deleting notification:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to delete notification',
-      error: error.message
-    });
-  }
-});
 
-// Mark notification as read
-router.patch('/student/:studentId/notifications/:notificationId/read', async (req, res) => {
-  try {
-    const { studentId, notificationId } = req.params;
-    
-    const notification = await Notification.findOneAndUpdate(
-      {
-        _id: notificationId,
-        $or: [
-          { user: studentId },
-          { user: null }
-        ]
-      },
-      { isRead: true },
-      { new: true }
-    );
-    
-    if (!notification) {
-      return res.status(404).json({
-        success: false,
-        message: 'Notification not found'
-      });
-    }
-    
-    res.json({
-      success: true,
-      message: 'Notification marked as read',
-      data: notification
-    });
-  } catch (error) {
-    console.error('Error marking notification as read:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to mark notification as read',
-      error: error.message
-    });
-  }
-});
-
-// Start an exam
-router.post('/exams/:examId/start', async (req, res) => {
-  try {
-    const { examId } = req.params;
-    const { studentId, sessionData } = req.body;
-
-    // Validate exam exists and is published
+    // Check if exam exists and is available
     const exam = await Exam.findById(examId).populate('questions');
     if (!exam) {
       return res.status(404).json({
@@ -339,107 +250,57 @@ router.post('/exams/:examId/start', async (req, res) => {
       });
     }
 
-    if (exam.status !== 'published') {
-      return res.status(400).json({
-        success: false,
-        message: 'Exam is not available'
-      });
-    }
-
-    // Check if exam is scheduled and within time window
-    const now = new Date();
-    if (exam.scheduledDate && exam.scheduledDate > now) {
-      return res.status(400).json({
-        success: false,
-        message: 'Exam has not started yet'
-      });
-    }
-
-    if (exam.endDate && exam.endDate < now) {
-      return res.status(400).json({
-        success: false,
-        message: 'Exam has ended'
-      });
-    }
-
     // Check if student is assigned to this exam
-    const isAssigned = exam.attempts?.some(attempt => 
-      attempt.student.toString() === studentId
-    ) || exam.assignedTo?.includes(studentId);
-
-    if (!isAssigned) {
+    if (!exam.assignedStudents.includes(user._id)) {
       return res.status(403).json({
         success: false,
         message: 'You are not assigned to this exam'
       });
     }
 
-    // Check if student has already started this exam
-    let studentExam = await StudentExam.findOne({
-      examId,
-      studentId
-    });
-
-    if (studentExam) {
-      if (studentExam.status === 'submitted' || studentExam.status === 'auto_submitted') {
-        return res.status(400).json({
-          success: false,
-          message: 'You have already completed this exam'
-        });
-      }
-      
-      if (studentExam.status === 'in_progress') {
-        // Calculate remaining time
-        const timeElapsed = Math.floor((now - studentExam.startedAt) / 1000);
-        const timeRemaining = Math.max(0, (exam.duration * 60) - timeElapsed);
-        
-        if (timeRemaining <= 0) {
-          // Auto-submit if time is up
-          studentExam.status = 'auto_submitted';
-          studentExam.submittedAt = new Date();
-          await studentExam.calculateScore();
-          
-          return res.status(400).json({
-            success: false,
-            message: 'Exam time has expired'
-          });
-        }
-        
-        studentExam.timeRemaining = timeRemaining;
-        await studentExam.save();
-        
-        return res.json({
-          success: true,
-          message: 'Resuming exam',
-          data: studentExam
-        });
-      }
-    } else {
-      // Create new student exam session
-      studentExam = new StudentExam({
-        examId,
-        studentId,
-        answers: exam.questions.map(q => ({
-          questionId: q._id,
-          answer: null
-        })),
-        sessionData,
-        timeRemaining: exam.duration * 60 // Convert minutes to seconds
+    // Check if exam is in correct status
+    if (exam.status !== 'ongoing' && exam.status !== 'upcoming') {
+      return res.status(400).json({
+        success: false,
+        message: 'Exam is not available for taking'
       });
     }
 
-    // Start the exam
-    studentExam.status = 'in_progress';
-    studentExam.startedAt = new Date();
-    await studentExam.save();
+    // Check if student already has an exam record
+    let studentExam = await StudentExam.findOne({
+      student: user._id,
+      exam: examId
+    });
 
-    // Populate exam details for response
-    await studentExam.populate('examId');
+    if (studentExam && studentExam.status === 'completed') {
+      return res.status(400).json({
+        success: false,
+        message: 'You have already completed this exam'
+      });
+    }
+
+    // Create or update student exam record
+    if (!studentExam) {
+      studentExam = new StudentExam({
+        student: user._id,
+        exam: examId,
+        status: 'in_progress',
+        startedAt: new Date(),
+        timeRemaining: exam.duration * 60, // Convert minutes to seconds
+        answers: []
+      });
+    } else {
+      studentExam.status = 'in_progress';
+      studentExam.startedAt = new Date();
+    }
+
+    await studentExam.save();
 
     res.json({
       success: true,
       message: 'Exam started successfully',
-      data: studentExam
+      studentExam: studentExam,
+      exam: exam
     });
   } catch (error) {
     console.error('Error starting exam:', error);
@@ -451,15 +312,23 @@ router.post('/exams/:examId/start', async (req, res) => {
   }
 });
 
-// Save answer for a question
-router.patch('/exams/:examId/answer', async (req, res) => {
+// Save answer
+router.post('/student/:studentId/exam/:examId/answer', async (req, res) => {
   try {
-    const { examId } = req.params;
-    const { studentId, questionId, answer, timeSpent } = req.body;
+    const { studentId, examId } = req.params;
+    const { questionId, answer, timeSpent } = req.body;
+    
+    const user = await findUserByIdentifier(studentId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found'
+      });
+    }
 
     const studentExam = await StudentExam.findOne({
-      examId,
-      studentId,
+      student: user._id,
+      exam: examId,
       status: 'in_progress'
     });
 
@@ -470,53 +339,29 @@ router.patch('/exams/:examId/answer', async (req, res) => {
       });
     }
 
-    // Check if exam time hasn't expired
-    const exam = await Exam.findById(examId);
-    const now = new Date();
-    const timeElapsed = Math.floor((now - studentExam.startedAt) / 1000);
-    const timeRemaining = Math.max(0, (exam.duration * 60) - timeElapsed);
-
-    if (timeRemaining <= 0) {
-      // Auto-submit if time is up
-      studentExam.status = 'auto_submitted';
-      studentExam.submittedAt = new Date();
-      await studentExam.calculateScore();
-      
-      return res.status(400).json({
-        success: false,
-        message: 'Exam time has expired. Your exam has been auto-submitted.'
-      });
-    }
-
-    // Find and update the answer
-    const answerIndex = studentExam.answers.findIndex(
-      a => a.questionId.toString() === questionId
+    // Find existing answer or create new one
+    const existingAnswerIndex = studentExam.answers.findIndex(
+      a => a.question.toString() === questionId
     );
 
-    if (answerIndex !== -1) {
-      studentExam.answers[answerIndex].answer = answer;
-      if (timeSpent) {
-        studentExam.answers[answerIndex].timeSpent = timeSpent;
-      }
+    const answerData = {
+      question: questionId,
+      answer: answer,
+      timeSpent: timeSpent || 0,
+      answeredAt: new Date()
+    };
+
+    if (existingAnswerIndex >= 0) {
+      studentExam.answers[existingAnswerIndex] = answerData;
     } else {
-      studentExam.answers.push({
-        questionId,
-        answer,
-        timeSpent: timeSpent || 0
-      });
+      studentExam.answers.push(answerData);
     }
 
-    studentExam.timeRemaining = timeRemaining;
-    studentExam.lastSavedAt = new Date();
     await studentExam.save();
 
     res.json({
       success: true,
-      message: 'Answer saved successfully',
-      data: {
-        timeRemaining,
-        lastSavedAt: studentExam.lastSavedAt
-      }
+      message: 'Answer saved successfully'
     });
   } catch (error) {
     console.error('Error saving answer:', error);
@@ -529,16 +374,23 @@ router.patch('/exams/:examId/answer', async (req, res) => {
 });
 
 // Submit exam
-router.post('/exams/:examId/submit', async (req, res) => {
+router.post('/student/:studentId/exam/:examId/submit', async (req, res) => {
   try {
-    const { examId } = req.params;
-    const { studentId, finalAnswers } = req.body;
+    const { studentId, examId } = req.params;
+    
+    const user = await findUserByIdentifier(studentId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found'
+      });
+    }
 
     const studentExam = await StudentExam.findOne({
-      examId,
-      studentId,
+      student: user._id,
+      exam: examId,
       status: 'in_progress'
-    });
+    }).populate('exam');
 
     if (!studentExam) {
       return res.status(404).json({
@@ -547,47 +399,39 @@ router.post('/exams/:examId/submit', async (req, res) => {
       });
     }
 
-    // Update final answers if provided
-    if (finalAnswers && Array.isArray(finalAnswers)) {
-      finalAnswers.forEach(({ questionId, answer, timeSpent }) => {
-        const answerIndex = studentExam.answers.findIndex(
-          a => a.questionId.toString() === questionId
-        );
-        
-        if (answerIndex !== -1) {
-          studentExam.answers[answerIndex].answer = answer;
-          if (timeSpent) {
-            studentExam.answers[answerIndex].timeSpent = timeSpent;
-          }
-        }
-      });
-    }
-
-    // Submit the exam
-    studentExam.status = 'submitted';
-    studentExam.submittedAt = new Date();
-    
     // Calculate score
-    await studentExam.calculateScore();
+    const exam = studentExam.exam;
+    const questions = await Question.find({ _id: { $in: exam.questions } });
+    
+    let totalScore = 0;
+    let maxScore = 0;
 
-    // Create notification for result
-    await Notification.create({
-      type: 'exam',
-      title: 'Exam Submitted',
-      message: `You have successfully submitted the exam "${studentExam.examId.title}". Results will be available once graded.`,
-      link: `/student/exams/${examId}/result`,
-      userId: studentId
+    questions.forEach(question => {
+      maxScore += question.marks || 1;
+      const studentAnswer = studentExam.answers.find(
+        a => a.question.toString() === question._id.toString()
+      );
+      
+      if (studentAnswer && studentAnswer.answer === question.correctAnswer) {
+        totalScore += question.marks || 1;
+      }
     });
+
+    // Update student exam record
+    studentExam.status = 'completed';
+    studentExam.submittedAt = new Date();
+    studentExam.score = totalScore;
+    studentExam.maxScore = maxScore;
+    studentExam.percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
+
+    await studentExam.save();
 
     res.json({
       success: true,
       message: 'Exam submitted successfully',
-      data: {
-        score: studentExam.score,
-        percentage: studentExam.percentage,
-        grade: studentExam.grade,
-        submittedAt: studentExam.submittedAt
-      }
+      score: totalScore,
+      maxScore: maxScore,
+      percentage: studentExam.percentage
     });
   } catch (error) {
     console.error('Error submitting exam:', error);
@@ -599,33 +443,80 @@ router.post('/exams/:examId/submit', async (req, res) => {
   }
 });
 
-// Get exam result
-router.get('/exams/:examId/result', async (req, res) => {
+// Report violation
+router.post('/student/:studentId/exam/:examId/violation', async (req, res) => {
   try {
-    const { examId } = req.params;
-    const { studentId } = req.query;
+    const { studentId, examId } = req.params;
+    const { type, description, severity = 'medium' } = req.body;
+    
+    const user = await findUserByIdentifier(studentId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Student not found'
+      });
+    }
 
     const studentExam = await StudentExam.findOne({
-      examId,
-      studentId,
-      status: { $in: ['submitted', 'auto_submitted'] }
-    })
-    .populate('examId', 'title subject totalMarks passingMarks settings')
-    .populate('answers.questionId', 'questionText type options correctAnswer explanation marks');
+      student: user._id,
+      exam: examId,
+      status: 'in_progress'
+    });
 
     if (!studentExam) {
       return res.status(404).json({
         success: false,
-        message: 'Exam result not found'
+        message: 'Active exam session not found'
       });
     }
 
-    // Check if results are published
-    const exam = studentExam.examId;
-    if (!exam.settings?.showResults) {
-      return res.status(403).json({
+    // Add violation to student exam
+    studentExam.violations.push({
+      type,
+      description,
+      severity,
+      timestamp: new Date()
+    });
+
+    await studentExam.save();
+
+    res.json({
+      success: true,
+      message: 'Violation reported successfully'
+    });
+  } catch (error) {
+    console.error('Error reporting violation:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to report violation',
+      error: error.message
+    });
+  }
+});
+
+// Get exam results
+router.get('/student/:studentId/exam/:examId/result', async (req, res) => {
+  try {
+    const { studentId, examId } = req.params;
+    
+    const user = await findUserByIdentifier(studentId);
+    if (!user) {
+      return res.status(404).json({
         success: false,
-        message: 'Results are not yet published'
+        message: 'Student not found'
+      });
+    }
+
+    const studentExam = await StudentExam.findOne({
+      student: user._id,
+      exam: examId,
+      status: 'completed'
+    }).populate('exam');
+
+    if (!studentExam) {
+      return res.status(404).json({
+        success: false,
+        message: 'Completed exam not found'
       });
     }
 
@@ -643,102 +534,23 @@ router.get('/exams/:examId/result', async (req, res) => {
   }
 });
 
-// Get exam session details (for taking exam)
-router.get('/exams/:examId/session', async (req, res) => {
-  try {
-    const { examId } = req.params;
-    const { studentId } = req.query;
-
-    const studentExam = await StudentExam.findOne({
-      examId,
-      studentId,
-      status: 'in_progress'
-    })
-    .populate({
-      path: 'examId',
-      populate: {
-        path: 'questions',
-        select: 'questionText type options marks difficulty'
-      }
-    });
-
-    if (!studentExam) {
-      return res.status(404).json({
-        success: false,
-        message: 'Active exam session not found'
-      });
-    }
-
-    // Calculate remaining time
-    const now = new Date();
-    const timeElapsed = Math.floor((now - studentExam.startedAt) / 1000);
-    const timeRemaining = Math.max(0, (studentExam.examId.duration * 60) - timeElapsed);
-
-    if (timeRemaining <= 0) {
-      // Auto-submit if time is up
-      studentExam.status = 'auto_submitted';
-      studentExam.submittedAt = new Date();
-      await studentExam.calculateScore();
-      
-      return res.status(400).json({
-        success: false,
-        message: 'Exam time has expired'
-      });
-    }
-
-    studentExam.timeRemaining = timeRemaining;
-    await studentExam.save();
-
-    res.json({
-      success: true,
-      data: {
-        ...studentExam.toObject(),
-        timeRemaining
-      }
-    });
-  } catch (error) {
-    console.error('Error fetching exam session:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch exam session',
-      error: error.message
-    });
+// Utility function to get time ago
+function getTimeAgo(date) {
+  const now = new Date();
+  const diffInSeconds = Math.floor((now - date) / 1000);
+  
+  if (diffInSeconds < 60) {
+    return `${diffInSeconds} seconds ago`;
+  } else if (diffInSeconds < 3600) {
+    const minutes = Math.floor(diffInSeconds / 60);
+    return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+  } else if (diffInSeconds < 86400) {
+    const hours = Math.floor(diffInSeconds / 3600);
+    return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  } else {
+    const days = Math.floor(diffInSeconds / 86400);
+    return `${days} day${days > 1 ? 's' : ''} ago`;
   }
-});
-
-// Report violation
-router.post('/exams/:examId/violation', async (req, res) => {
-  try {
-    const { examId } = req.params;
-    const { studentId, type, details } = req.body;
-
-    const studentExam = await StudentExam.findOne({
-      examId,
-      studentId,
-      status: 'in_progress'
-    });
-
-    if (!studentExam) {
-      return res.status(404).json({
-        success: false,
-        message: 'Active exam session not found'
-      });
-    }
-
-    await studentExam.addViolation(type, details);
-
-    res.json({
-      success: true,
-      message: 'Violation recorded'
-    });
-  } catch (error) {
-    console.error('Error recording violation:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to record violation',
-      error: error.message
-    });
-  }
-});
+}
 
 export default router;

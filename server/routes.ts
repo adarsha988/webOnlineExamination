@@ -1,12 +1,9 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import express from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 import { storage } from "./storage";
-import { authenticateToken, authorizeRole } from "./middleware/auth.js";
-import { gradeShortAnswers } from "./services/aiGrading.js";
-import { insertUserSchema, insertExamSchema, insertQuestionSchema } from "@shared/schema";
+import { authenticateToken } from "./middleware/auth.js";
 import { config, validateEnv } from "./config/env.js";
 // @ts-ignore
 import quizRoutes from "./routes/quiz.js";
@@ -50,13 +47,25 @@ import studentNotificationsRoutes from "./routes/studentNotifications.js";
 import globalAnalyticsRoutes from "./routes/globalAnalytics.js";
 // @ts-ignore
 import globalNotificationsRoutes from "./routes/globalNotifications.js";
+// @ts-ignore
+import instructorStatsRoutes from "./routes/instructorStats.js";
+// @ts-ignore
+import studentStatsRoutes from "./routes/studentStats.js";
+// @ts-ignore
+import attemptsRoutes from "./routes/attempts.js";
+// @ts-ignore
+import proctoringRoutes from "./routes/proctoring.js";
+// @ts-ignore
+import resultsRoutes from "./routes/results.js";
+// @ts-ignore
+import aiProctoringRoutes from "./routes/aiProctoring.js";
 
 // Validate environment variables
 validateEnv();
 
 export function registerRoutes(app: Express): Server {
   // Health check endpoint
-  app.get('/health', (req, res) => {
+  app.get('/health', (_req, res) => {
     res.json({ 
       status: 'OK', 
       timestamp: new Date().toISOString(),
@@ -89,6 +98,16 @@ export function registerRoutes(app: Express): Server {
   app.use('/api', studentExamsRoutes);
   app.use('/api', studentAnalyticsRoutes);
   app.use('/api', studentNotificationsRoutes);
+  app.use('/api/student', studentStatsRoutes);
+  
+  // Instructor Stats Routes
+  app.use('/api/instructor', instructorStatsRoutes);
+  
+  // AI Proctoring Routes
+  app.use('/api/attempts', attemptsRoutes);
+  app.use('/api/proctoring', proctoringRoutes);
+  app.use('/api/results', resultsRoutes);
+  app.use('/api/ai-proctoring', aiProctoringRoutes);
   
   // Global API Routes (role-aware)
   app.use('/api/global-analytics', globalAnalyticsRoutes);
@@ -124,7 +143,7 @@ export function registerRoutes(app: Express): Server {
       const token = jwt.sign(
         { userId: user.id, email: user.email, role: user.role },
         config.jwt.secret,
-        { expiresIn: config.jwt.expiresIn }
+        { expiresIn: '24h' }
       );
 
       // Remove password from response
@@ -155,7 +174,7 @@ export function registerRoutes(app: Express): Server {
       const token = jwt.sign(
         { userId: user.id, email: user.email, role: user.role },
         config.jwt.secret,
-        { expiresIn: config.jwt.expiresIn }
+        { expiresIn: '24h' }
       );
 
       // Remove password from response
