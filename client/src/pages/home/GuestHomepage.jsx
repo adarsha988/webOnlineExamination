@@ -25,7 +25,7 @@ const GuestHomepage = () => {
   }, [dispatch, isAuthenticated]);
 
   useEffect(() => {
-    // Redirect authenticated users to their dashboard - but not during logout
+    // Redirect authenticated users to their appropriate dashboard
     if (isAuthenticated && user && !isLoading) {
       console.log('🏠 HOMEPAGE: Redirecting authenticated user:', user.role);
       const dashboardRoutes = {

@@ -34,6 +34,22 @@ import notificationsRoutes from "./routes/notifications.js";
 import questionsRoutes from "./routes/questions.js";
 // @ts-ignore
 import sharedBanksRoutes from "./routes/sharedBanks.js";
+// @ts-ignore
+import adminRoutes from "./routes/admin.js";
+// @ts-ignore
+import analyticsRoutes from "./routes/analytics.js";
+// @ts-ignore
+import instructorExamsRoutes from "./routes/instructorExams.js";
+// @ts-ignore
+import studentExamsRoutes from "./routes/studentExams.js";
+// @ts-ignore
+import studentAnalyticsRoutes from "./routes/studentAnalytics.js";
+// @ts-ignore
+import studentNotificationsRoutes from "./routes/studentNotifications.js";
+// @ts-ignore
+import globalAnalyticsRoutes from "./routes/globalAnalytics.js";
+// @ts-ignore
+import globalNotificationsRoutes from "./routes/globalNotifications.js";
 
 // Validate environment variables
 validateEnv();
@@ -67,6 +83,20 @@ export function registerRoutes(app: Express): Server {
   // Instructor API Routes
   app.use('/api/questions', questionsRoutes);
   app.use('/api/shared-banks', sharedBanksRoutes);
+  app.use('/api/exams', instructorExamsRoutes);
+  
+  // Student API Routes
+  app.use('/api', studentExamsRoutes);
+  app.use('/api', studentAnalyticsRoutes);
+  app.use('/api', studentNotificationsRoutes);
+  
+  // Global API Routes (role-aware)
+  app.use('/api/global-analytics', globalAnalyticsRoutes);
+  app.use('/api/global-notifications', globalNotificationsRoutes);
+  
+  // Admin API Routes
+  app.use('/api/admin', adminRoutes);
+  app.use('/api/analytics', analyticsRoutes);
 
   // Authentication routes
   app.post('/api/auth/register', async (req, res) => {

@@ -10,11 +10,13 @@ import NotFound from "@/pages/not-found";
 // @ts-ignore
 import GuestHomepage from "@/pages/home/GuestHomepage.jsx";
 // @ts-ignore
-import StudentDashboard from "@/pages/student/Dashboard.jsx";
+import StudentDashboard from "@/pages/student/StudentDashboard.jsx";
 // @ts-ignore
-import StudentExamInterface from "@/pages/student/ExamInterface.jsx";
+import ExamTaking from "@/pages/student/ExamTaking.jsx";
 // @ts-ignore
-import StudentResults from "@/pages/student/Results.jsx";
+import StudentAnalytics from "@/pages/student/StudentAnalytics.jsx";
+// @ts-ignore
+import ExamResult from "@/pages/student/ExamResult.jsx";
 // @ts-ignore
 import InstructorDashboard from "@/pages/instructor/Dashboard.jsx";
 // @ts-ignore
@@ -43,6 +45,18 @@ import ActiveTodayPage from "@/components/admin/ActiveTodayPage.jsx";
 import SystemAnalyticsPage from "@/components/admin/SystemAnalyticsPage.jsx";
 // @ts-ignore
 import ExamsPage from "@/components/admin/ExamsPage.jsx";
+// @ts-ignore
+import QuestionReview from "@/pages/admin/QuestionReview.jsx";
+// @ts-ignore
+import InstructorAnalytics from "@/pages/instructor/Analytics.jsx";
+// @ts-ignore
+import AdminAnalytics from "@/pages/admin/AdminAnalytics.jsx";
+// @ts-ignore
+import GlobalAnalytics from "@/pages/GlobalAnalytics.jsx";
+// @ts-ignore
+import GlobalNotifications from "@/components/GlobalNotifications.jsx";
+// @ts-ignore
+import CompletedExams from "@/pages/student/CompletedExams.jsx";
 
 function Router() {
   return (
@@ -55,12 +69,27 @@ function Router() {
       )} />
       <Route path="/student/exam/:id" component={() => (
         <ProtectedRoute allowedRoles={['student']}>
-          <StudentExamInterface />
+          <ExamTaking />
         </ProtectedRoute>
       )} />
-      <Route path="/student/results" component={() => (
+      <Route path="/student/exam/:id/result" component={() => (
         <ProtectedRoute allowedRoles={['student']}>
-          <StudentResults />
+          <ExamResult />
+        </ProtectedRoute>
+      )} />
+      <Route path="/student/analytics" component={() => (
+        <ProtectedRoute allowedRoles={['student']}>
+          <StudentAnalytics />
+        </ProtectedRoute>
+      )} />
+      <Route path="/student/notifications" component={() => (
+        <ProtectedRoute allowedRoles={['student']}>
+          <GlobalNotifications />
+        </ProtectedRoute>
+      )} />
+      <Route path="/student/exams/completed" component={() => (
+        <ProtectedRoute allowedRoles={['student']}>
+          <CompletedExams />
         </ProtectedRoute>
       )} />
       
@@ -100,6 +129,11 @@ function Router() {
           <EditExam />
         </ProtectedRoute>
       </Route>
+      <Route path="/instructor/analytics">
+        <ProtectedRoute allowedRoles={['instructor', 'admin']}>
+          <InstructorAnalytics />
+        </ProtectedRoute>
+      </Route>
       
       {/* Admin Routes */}
       <Route path="/admin/dashboard" component={() => (
@@ -127,14 +161,31 @@ function Router() {
           <ActiveTodayPage />
         </ProtectedRoute>
       )} />
-      <Route path="/admin/system-analytics" component={() => (
-        <ProtectedRoute allowedRoles={['admin']}>
-          <SystemAnalyticsPage />
-        </ProtectedRoute>
-      )} />
       <Route path="/admin/exams" component={() => (
         <ProtectedRoute allowedRoles={['admin']}>
           <ExamsPage />
+        </ProtectedRoute>
+      )} />
+      <Route path="/admin/question-review" component={() => (
+        <ProtectedRoute allowedRoles={['admin']}>
+          <QuestionReview />
+        </ProtectedRoute>
+      )} />
+      <Route path="/admin/system-analytics" component={() => (
+        <ProtectedRoute allowedRoles={['admin']}>
+          <AdminAnalytics />
+        </ProtectedRoute>
+      )} />
+      
+      {/* Global Routes (role-aware) */}
+      <Route path="/analytics" component={() => (
+        <ProtectedRoute allowedRoles={['admin', 'instructor', 'student']}>
+          <GlobalAnalytics />
+        </ProtectedRoute>
+      )} />
+      <Route path="/notifications" component={() => (
+        <ProtectedRoute allowedRoles={['admin', 'instructor', 'student']}>
+          <GlobalNotifications />
         </ProtectedRoute>
       )} />
       

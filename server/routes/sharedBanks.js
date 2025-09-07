@@ -34,7 +34,7 @@ const logActivity = async (userId, type, description, metadata = {}) => {
 // GET /api/shared-banks - List shared banks accessible to user
 router.get('/', authenticateToken, requireInstructor, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const { departmentId, subject, page = 1, limit = 20 } = req.query;
 
     const pageNum = parseInt(page);
@@ -114,7 +114,7 @@ router.get('/public', authenticateToken, requireInstructor, async (req, res) => 
 router.get('/:id', authenticateToken, requireInstructor, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     const sharedBank = await SharedBank.findById(id)
       .populate('owners', 'name email departmentId')
@@ -143,7 +143,7 @@ router.get('/:id', authenticateToken, requireInstructor, async (req, res) => {
 // POST /api/shared-banks - Create new shared bank
 router.post('/', authenticateToken, requireInstructor, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const {
       name,
       description,
@@ -202,7 +202,7 @@ router.post('/', authenticateToken, requireInstructor, async (req, res) => {
 router.put('/:id', authenticateToken, requireInstructor, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     const sharedBank = await SharedBank.findById(id);
     if (!sharedBank || !sharedBank.isActive) {
@@ -256,7 +256,7 @@ router.put('/:id', authenticateToken, requireInstructor, async (req, res) => {
 router.delete('/:id', authenticateToken, requireInstructor, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     const sharedBank = await SharedBank.findById(id);
     if (!sharedBank || !sharedBank.isActive) {
@@ -303,26 +303,27 @@ router.delete('/:id', authenticateToken, requireInstructor, async (req, res) => 
 router.get('/:id/questions', authenticateToken, requireInstructor, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const { 
-      status, 
-      subject, 
-      difficulty, 
-      type, 
       page = 1, 
-      limit = 20,
-      sort = 'updatedAt',
+      limit = 10, 
+      search = '', 
+      difficulty = '', 
+      type = '', 
+      status = '',
+      sort = 'createdAt',
       order = 'desc'
     } = req.query;
 
+    // Check if user has access to this shared bank
     const sharedBank = await SharedBank.findById(id);
-    if (!sharedBank || !sharedBank.isActive) {
+    if (!sharedBank) {
       return res.status(404).json({ message: 'Shared bank not found' });
     }
 
     const permissions = sharedBank.getUserPermissions(userId);
-    if (!permissions.isOwner && !permissions.isCollaborator) {
-      return res.status(403).json({ message: 'Access denied to this shared bank' });
+    if (!permissions.canView) {
+      return res.status(403).json({ message: 'No permission to view this shared bank' });
     }
 
     const pageNum = parseInt(page);
@@ -330,10 +331,10 @@ router.get('/:id/questions', authenticateToken, requireInstructor, async (req, r
     const skip = (pageNum - 1) * limitNum;
 
     const options = {
-      status,
-      subject,
+      search,
       difficulty,
       type,
+      status,
       sort: { [sort]: order === 'desc' ? -1 : 1 }
     };
 
@@ -341,13 +342,19 @@ router.get('/:id/questions', authenticateToken, requireInstructor, async (req, r
       .skip(skip)
       .limit(limitNum);
 
+    // Get total count for pagination
     const total = await Question.countDocuments({
       sharedBankId: id,
       isActive: true,
-      ...(status && { status }),
-      ...(subject && { subject }),
+      ...(search && {
+        $or: [
+          { questionText: { $regex: search, $options: 'i' } },
+          { subject: { $regex: search, $options: 'i' } }
+        ]
+      }),
       ...(difficulty && { difficulty }),
-      ...(type && { type })
+      ...(type && { type }),
+      ...(status && { status })
     });
 
     const totalPages = Math.ceil(total / limitNum);
@@ -358,14 +365,13 @@ router.get('/:id/questions', authenticateToken, requireInstructor, async (req, r
         currentPage: pageNum,
         totalPages,
         totalItems: total,
-        itemsPerPage: limitNum,
-        hasNext: pageNum < totalPages,
-        hasPrev: pageNum > 1
+        itemsPerPage: limitNum
       },
       sharedBank: {
         id: sharedBank._id,
         name: sharedBank.name,
-        userPermissions: permissions
+        description: sharedBank.description,
+        permissions
       }
     });
 
@@ -375,11 +381,130 @@ router.get('/:id/questions', authenticateToken, requireInstructor, async (req, r
   }
 });
 
+// GET /api/shared-banks/approved-questions - Get approved questions from all accessible shared banks
+router.get('/approved-questions', authenticateToken, requireInstructor, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { 
+      page = 1, 
+      limit = 10, 
+      search = '', 
+      difficulty = '', 
+      type = '', 
+      subject = '',
+      sort = 'createdAt',
+      order = 'desc'
+    } = req.query;
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    // Get user's department from User model
+    const user = await User.findById(userId).select('department');
+    if (!user || !user.department) {
+      return res.status(400).json({ message: 'User department not found' });
+    }
+
+    // Find shared banks that the user can access (same department or public)
+    const accessibleBanks = await SharedBank.find({
+      $or: [
+        { department: user.department },
+        { isPublic: true }
+      ],
+      isActive: true
+    }).select('_id');
+
+    const bankIds = accessibleBanks.map(bank => bank._id);
+
+    // Build query for approved questions
+    let query = {
+      sharedBankId: { $in: bankIds },
+      status: 'approved',
+      isActive: true
+    };
+
+    if (search) {
+      query.$or = [
+        { questionText: { $regex: search, $options: 'i' } },
+        { subject: { $regex: search, $options: 'i' } },
+        { tags: { $in: [new RegExp(search, 'i')] } }
+      ];
+    }
+
+    if (difficulty) {
+      query.difficulty = difficulty;
+    }
+
+    if (type) {
+      query.type = type;
+    }
+
+    if (subject) {
+      query.subject = { $regex: subject, $options: 'i' };
+    }
+
+    // Get questions with pagination
+    const [questions, total] = await Promise.all([
+      Question.find(query)
+        .populate('createdBy', 'name email')
+        .populate('sharedBankId', 'name description department')
+        .sort({ [sort]: order === 'desc' ? -1 : 1 })
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      Question.countDocuments(query)
+    ]);
+
+    // Format questions for frontend
+    const formattedQuestions = questions.map(question => ({
+      id: question._id,
+      subject: question.subject,
+      difficulty: question.difficulty,
+      type: question.type,
+      questionText: question.questionText,
+      options: question.options,
+      correctAnswer: question.correctAnswer,
+      explanation: question.explanation,
+      marks: question.marks,
+      tags: question.tags,
+      status: question.status,
+      createdBy: question.createdBy,
+      createdAt: question.createdAt,
+      sharedBank: question.sharedBankId ? {
+        id: question.sharedBankId._id,
+        name: question.sharedBankId.name,
+        description: question.sharedBankId.description,
+        department: question.sharedBankId.department
+      } : null
+    }));
+
+    res.json({
+      success: true,
+      questions: formattedQuestions,
+      pagination: {
+        currentPage: pageNum,
+        totalPages: Math.ceil(total / limitNum),
+        totalItems: total,
+        itemsPerPage: limitNum
+      },
+      summary: {
+        totalApprovedQuestions: total,
+        accessibleBanks: bankIds.length
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching approved questions:', error);
+    res.status(500).json({ message: 'Error fetching approved questions', error: error.message });
+  }
+});
+
 // POST /api/shared-banks/:id/invite - Invite collaborator
 router.post('/:id/invite', authenticateToken, requireInstructor, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const { email, permissions = {} } = req.body;
 
     if (!email) {
@@ -443,7 +568,7 @@ router.post('/:id/invite', authenticateToken, requireInstructor, async (req, res
 router.delete('/:id/collaborators/:collaboratorId', authenticateToken, requireInstructor, async (req, res) => {
   try {
     const { id, collaboratorId } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     const sharedBank = await SharedBank.findById(id);
     if (!sharedBank || !sharedBank.isActive) {
@@ -488,7 +613,7 @@ router.delete('/:id/collaborators/:collaboratorId', authenticateToken, requireIn
 router.put('/:id/collaborators/:collaboratorId/permissions', authenticateToken, requireInstructor, async (req, res) => {
   try {
     const { id, collaboratorId } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const { permissions } = req.body;
 
     if (!permissions) {

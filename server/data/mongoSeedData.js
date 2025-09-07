@@ -1,7 +1,8 @@
-import Quiz from '../models/quiz.model.js';
-import Testimonial from '../models/testimonial.model.js';
+import { seedInstructorData } from './instructorSeedData.js';
 import Contact from '../models/contact.model.js';
 import College from '../models/college.model.js';
+import Quiz from '../models/quiz.model.js';
+import Testimonial from '../models/testimonial.model.js';
 
 export const seedMongoData = async () => {
   try {
@@ -172,6 +173,9 @@ export const seedMongoData = async () => {
     } else {
       console.log('⏭️  Colleges already exist');
     }
+
+    // Seed Instructor Data (Exams and Questions)
+    await seedInstructorData();
 
     console.log('🎉 MongoDB seeding completed successfully!');
   } catch (error) {

@@ -10,6 +10,12 @@ import connectDB from "./config/database.js";
 import { autoSeed } from "./data/seedData.js";
 // @ts-ignore
 import { seedMongoData } from "./data/mongoSeedData.js";
+// @ts-ignore
+import studentSeedData from "./data/studentSeedData.js";
+// @ts-ignore
+import { seedComprehensiveData } from "./data/comprehensiveSeedData.js";
+// @ts-ignore
+import seedStudentDashboard from "./data/seedStudents.js";
 
 const app = express();
 
@@ -100,10 +106,10 @@ app.use((req, res, next) => {
     log(`serving on port ${port}`);
     // Connect to MongoDB
     await connectDB();
-    // Auto-seed database with demo users
-    await autoSeed();
-    // Seed MongoDB collections
-    await seedMongoData();
+    // Seed student dashboard data (checks if data exists first)
+    await seedStudentDashboard();
+    // Seed comprehensive data for full integration
+    await seedComprehensiveData();
     // Seed notifications
     await NotificationService.seedNotifications();
   });

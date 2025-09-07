@@ -1,32 +1,47 @@
 import { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { Link } from 'wouter';
 import { FileText, Users, TrendingUp, Clock, Plus, Database, BarChart3, Eye, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import InstructorLayout from '../../layouts/InstructorLayout';
-import { fetchExams } from '../../store/examSlice';
+import { instructorExamAPI } from '../../api/instructorExams';
 
 const InstructorDashboard = () => {
-  const dispatch = useDispatch();
-  const { exams, isLoading } = useSelector((state) => state.exam);
   const { user } = useSelector((state) => state.auth);
+  const [dashboardData, setDashboardData] = useState({
+    stats: {
+      totalExams: 0,
+      totalAttempts: 0,
+      avgScore: 0,
+      pendingGrades: 0
+    },
+    recentExams: []
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    dispatch(fetchExams());
-  }, [dispatch]);
+    const fetchDashboardData = async () => {
+      if (!user?.id) return;
+      
+      try {
+        setIsLoading(true);
+        setError(null);
+        const data = await instructorExamAPI.getDashboardStats(user.id);
+        setDashboardData(data);
+      } catch (err) {
+        console.error('Error fetching dashboard data:', err);
+        setError(err.message || 'Failed to load dashboard data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  // Filter exams for current instructor - ensure exams is an array
-  const instructorExams = Array.isArray(exams) ? exams.filter(exam => exam.instructorId === user?.id) : [];
-  const recentExams = instructorExams.slice(0, 4);
+    fetchDashboardData();
+  }, [user?.id]);
 
-  // Calculate stats
-  const stats = {
-    totalExams: instructorExams.length,
-    totalStudents: instructorExams.reduce((sum, exam) => sum + (exam.assignedStudents?.length || 0), 0),
-    avgScore: 82, // This would be calculated from actual attempt data
-    pendingGrades: Math.floor(Math.random() * 30) + 10,
-  };
+  const { stats, recentExams } = dashboardData;
 
   const StatCard = ({ icon: Icon, title, value, iconColor }) => (
     <Card className="card-hover">
@@ -45,9 +60,34 @@ const InstructorDashboard = () => {
   );
 
   const ExamCard = ({ exam }) => {
-    const assignedCount = exam.assignedStudents?.length || 0;
-    const completedCount = Math.floor(assignedCount * 0.7); // Mock completion rate
-    const avgScore = Math.floor(Math.random() * 20) + 75; // Mock average score
+    const getStatusColor = (status) => {
+      switch (status) {
+        case 'published':
+        case 'upcoming':
+          return 'bg-green-100 text-green-800';
+        case 'completed':
+          return 'bg-blue-100 text-blue-800';
+        case 'draft':
+          return 'bg-gray-100 text-gray-800';
+        default:
+          return 'bg-gray-100 text-gray-800';
+      }
+    };
+
+    const getStatusLabel = (status) => {
+      switch (status) {
+        case 'published':
+          return 'Published';
+        case 'upcoming':
+          return 'Upcoming';
+        case 'completed':
+          return 'Completed';
+        case 'draft':
+          return 'Draft';
+        default:
+          return status;
+      }
+    };
 
     return (
       <Card>
@@ -55,26 +95,33 @@ const InstructorDashboard = () => {
           <div className="flex justify-between items-start mb-3">
             <div>
               <h3 className="text-lg font-semibold text-foreground">{exam.title}</h3>
-              <p className="text-sm text-muted-foreground">{exam.subject} • {exam.totalQuestions || 0} Questions</p>
+              <p className="text-sm text-muted-foreground">
+                {exam.subject} • {exam.questionsCount || 0} Questions • {exam.totalMarks || 0} Marks
+              </p>
+              {exam.scheduledDate && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Scheduled: {new Date(exam.scheduledDate).toLocaleDateString()}
+                </p>
+              )}
             </div>
-            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-              exam.status === 'active' ? 'bg-secondary/10 text-secondary' : 'bg-accent/10 text-accent'
-            }`}>
-              {exam.status === 'active' ? 'Active' : 'Draft'}
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(exam.status)}`}>
+              {getStatusLabel(exam.status)}
             </span>
           </div>
           
           <div className="grid grid-cols-3 gap-4 mb-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-foreground">{assignedCount}</p>
-              <p className="text-xs text-muted-foreground">Assigned</p>
+              <p className="text-2xl font-bold text-foreground">{exam.duration || 0}</p>
+              <p className="text-xs text-muted-foreground">Minutes</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-foreground">{completedCount}</p>
-              <p className="text-xs text-muted-foreground">Completed</p>
+              <p className="text-2xl font-bold text-foreground">{exam.attemptsCount || 0}</p>
+              <p className="text-xs text-muted-foreground">Attempts</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-foreground">{exam.status === 'active' ? `${avgScore}%` : '-'}</p>
+              <p className="text-2xl font-bold text-foreground">
+                {exam.averageScore ? `${exam.averageScore}%` : '-'}
+              </p>
               <p className="text-xs text-muted-foreground">Avg Score</p>
             </div>
           </div>
@@ -84,7 +131,7 @@ const InstructorDashboard = () => {
               <Eye className="h-4 w-4 mr-2" />
               View Results
             </Button>
-            <Link href={`/instructor/exam/${exam.id}/questions`}>
+            <Link href={`/instructor/exam/${exam.id}/edit`}>
               <Button variant="outline" size="sm" className="flex-1">
                 <Edit className="h-4 w-4 mr-2" />
                 Edit Exam
@@ -144,8 +191,8 @@ const InstructorDashboard = () => {
           />
           <StatCard
             icon={Users}
-            title="Students"
-            value={stats.totalStudents}
+            title="Total Attempts"
+            value={stats.totalAttempts}
             iconColor="text-secondary"
           />
           <StatCard
@@ -196,6 +243,17 @@ const InstructorDashboard = () => {
                   </Card>
                 ))}
               </div>
+            ) : error ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <div className="text-red-500 mb-4">⚠️</div>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">Error Loading Exams</h3>
+                  <p className="text-muted-foreground mb-4">{error}</p>
+                  <Button onClick={() => window.location.reload()}>
+                    Try Again
+                  </Button>
+                </CardContent>
+              </Card>
             ) : recentExams.length > 0 ? (
               <div className="space-y-4">
                 {recentExams.map((exam) => (
@@ -223,27 +281,33 @@ const InstructorDashboard = () => {
           <div>
             <h2 className="text-xl font-semibold text-foreground mb-4">Quick Actions</h2>
             <div className="space-y-4">
-              <QuickActionCard
-                icon={Plus}
-                title="New Exam"
-                description="Start creating a new examination"
-                action={() => window.location.href = '/instructor/exam/create'}
-                variant="default"
-              />
+              <Link href="/instructor/exam-creation">
+                <QuickActionCard
+                  icon={Plus}
+                  title="New Exam"
+                  description="Start creating a new examination"
+                  action={() => {}}
+                  variant="default"
+                />
+              </Link>
               
-              <QuickActionCard
-                icon={Database}
-                title="View Bank"
-                description="Manage your question library"
-                action={() => {}}
-              />
+              <Link href="/instructor/question-bank">
+                <QuickActionCard
+                  icon={Database}
+                  title="View Bank"
+                  description="Manage your question library"
+                  action={() => {}}
+                />
+              </Link>
               
-              <QuickActionCard
-                icon={BarChart3}
-                title="Analytics"
-                description="View detailed analytics"
-                action={() => {}}
-              />
+              <Link href="/instructor/analytics">
+                <QuickActionCard
+                  icon={BarChart3}
+                  title="Analytics"
+                  description="View detailed analytics"
+                  action={() => {}}
+                />
+              </Link>
             </div>
           </div>
         </div>

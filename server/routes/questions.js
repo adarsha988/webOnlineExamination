@@ -60,7 +60,7 @@ router.get('/', authenticateToken, requireInstructor, async (req, res) => {
       order = 'desc'
     } = req.query;
 
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     const skip = (pageNum - 1) * limitNum;
@@ -168,7 +168,7 @@ router.get('/', authenticateToken, requireInstructor, async (req, res) => {
 router.get('/:id', authenticateToken, requireInstructor, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     const question = await Question.findById(id)
       .populate('createdBy', 'name email')
@@ -203,7 +203,7 @@ router.get('/:id', authenticateToken, requireInstructor, async (req, res) => {
 // POST /api/questions - Create new question
 router.post('/', authenticateToken, requireInstructor, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const {
       scope = 'private',
       sharedBankId,
@@ -313,7 +313,7 @@ router.post('/', authenticateToken, requireInstructor, async (req, res) => {
 router.put('/:id', authenticateToken, requireInstructor, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const userRole = req.user.role;
 
     const question = await Question.findById(id).populate('sharedBankId');
@@ -386,7 +386,7 @@ router.put('/:id', authenticateToken, requireInstructor, async (req, res) => {
 router.delete('/:id', authenticateToken, requireInstructor, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const userRole = req.user.role;
 
     const question = await Question.findById(id).populate('sharedBankId');
@@ -439,7 +439,7 @@ router.delete('/:id', authenticateToken, requireInstructor, async (req, res) => 
 router.post('/:id/approve', authenticateToken, requireInstructor, async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     const question = await Question.findById(id).populate('sharedBankId');
     if (!question || !question.isActive) {
@@ -492,7 +492,7 @@ router.post('/:id/approve', authenticateToken, requireInstructor, async (req, re
 // POST /api/questions/bulk-import - Bulk import questions from CSV/Excel
 router.post('/bulk-import', authenticateToken, requireInstructor, upload.single('file'), async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const { scope = 'private', sharedBankId } = req.body;
 
     if (!req.file) {
@@ -586,7 +586,7 @@ router.post('/bulk-import', authenticateToken, requireInstructor, upload.single(
 // GET /api/questions/export - Export questions to CSV/Excel
 router.get('/export', authenticateToken, requireInstructor, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const { 
       format = 'csv', 
       scope = 'private', 

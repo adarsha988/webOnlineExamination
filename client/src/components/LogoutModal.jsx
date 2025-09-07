@@ -63,22 +63,18 @@ const LogoutModal = ({ isOpen, onClose }) => {
       
       console.log('🏠 LOGOUT MODAL - Redirecting to homepage');
       
-      // Add small delay to ensure Redux state is updated before redirect
-      setTimeout(() => {
-        setLocation('/');
-      }, 100);
+      // Force redirect to homepage immediately after logout
+      window.location.href = '/';
     } catch (error) {
       console.error('💥 LOGOUT MODAL ERROR:', error);
       
       // Still redirect even if there's an error
-      setTimeout(() => {
-        setLocation('/');
-      }, 100);
+      window.location.href = '/';
     } finally {
       console.log('🔓 LOGOUT MODAL - Resetting execution flag');
       isExecuting.current = false;
     }
-  }, [dispatch, onClose, setLocation, toast]);
+  }, [dispatch, onClose, toast]);
 
   return (
     <AnimatePresence>

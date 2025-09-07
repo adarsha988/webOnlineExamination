@@ -37,6 +37,7 @@ const AdminDashboard = () => {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Activity },
     { id: 'users', label: 'User Management', icon: Users },
+    { id: 'questions', label: 'Question Review', icon: BookOpen },
     { id: 'reports', label: 'Reports & Analytics', icon: TrendingUp },
     { id: 'settings', label: 'Settings', icon: Settings }
   ];
@@ -296,7 +297,7 @@ const AdminDashboard = () => {
                 <div className="space-y-6">
                   <div className="bg-white rounded-lg shadow-sm border p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
                       <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                         <Button
                           onClick={() => setShowAddUserModal(true)}
@@ -337,6 +338,16 @@ const AdminDashboard = () => {
                           <span className="text-xs sm:text-sm">Users</span>
                         </Button>
                       </motion.div>
+                      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                        <Button
+                          onClick={() => setActiveTab('questions')}
+                          className="h-16 sm:h-20 flex-col w-full"
+                          variant="outline"
+                        >
+                          <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 mb-1 sm:mb-2" />
+                          <span className="text-xs sm:text-sm">Questions</span>
+                        </Button>
+                      </motion.div>
                     </div>
                   </div>
 
@@ -374,6 +385,50 @@ const AdminDashboard = () => {
 
           {activeTab === 'users' && (
             <UserManagement searchQuery={searchQuery} />
+          )}
+
+          {activeTab === 'questions' && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Question Review</h2>
+                <Button 
+                  onClick={() => window.location.href = '/admin/question-review'}
+                  className="flex items-center gap-2"
+                >
+                  <BookOpen className="h-4 w-4" />
+                  Open Question Review
+                </Button>
+              </div>
+              <p className="text-gray-600 mb-4">
+                Review and approve shared questions from instructors across all departments.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-yellow-50 p-4 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                    <span className="font-medium text-yellow-800">Pending Review</span>
+                  </div>
+                  <p className="text-2xl font-bold text-yellow-900">12</p>
+                  <p className="text-sm text-yellow-700">Questions awaiting approval</p>
+                </div>
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <span className="font-medium text-green-800">Approved Today</span>
+                  </div>
+                  <p className="text-2xl font-bold text-green-900">8</p>
+                  <p className="text-sm text-green-700">Questions approved</p>
+                </div>
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                    <span className="font-medium text-blue-800">Total Banks</span>
+                  </div>
+                  <p className="text-2xl font-bold text-blue-900">24</p>
+                  <p className="text-sm text-blue-700">Shared question banks</p>
+                </div>
+              </div>
+            </div>
           )}
 
           {activeTab === 'reports' && (
