@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
+import ErrorDialog from '@/components/ui/ErrorDialog';
 import { loginUser, clearError } from '../../store/authSlice';
 
 const Login = () => {
@@ -21,6 +22,9 @@ const Login = () => {
     password: '',
     remember: false,
   });
+  
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
+  const [dialogError, setDialogError] = useState(null);
 
   useEffect(() => {
     console.log('🔄 LOGIN COMPONENT - Auth state changed:', { 
@@ -49,11 +53,37 @@ const Login = () => {
 
   useEffect(() => {
     if (error && error !== null) {
-      toast({
-        title: 'Login Failed',
-        description: error,
-        variant: 'destructive',
-      });
+      // Handle different error types with specific popups
+      const errorObj = typeof error === 'object' ? error : { message: error, code: 'UNKNOWN' };
+      
+      // Show error dialog for critical errors (unauthorized, forbidden, rate limited)
+      if (['UNAUTHORIZED', 'FORBIDDEN', 'RATE_LIMITED'].includes(errorObj.code)) {
+        setDialogError(errorObj);
+        setShowErrorDialog(true);
+      } else {
+        // Use toast for less critical errors
+        let title = 'Login Failed';
+        let description = errorObj.message || 'An unexpected error occurred';
+        
+        switch (errorObj.code) {
+          case 'SERVER_ERROR':
+            title = '🔧 Server Error';
+            break;
+          case 'NETWORK_ERROR':
+            title = '🌐 Connection Error';
+            break;
+          default:
+            title = '❌ Login Failed';
+        }
+        
+        toast({
+          title,
+          description,
+          variant: 'destructive',
+          duration: 5000,
+        });
+      }
+      
       dispatch(clearError());
     }
   }, [error, toast, dispatch]);
@@ -76,13 +106,25 @@ const Login = () => {
   };
 
   const demoAccounts = [
-    { type: 'Student', email: 'stu1@example.com', password: 'stu123' },
-    { type: 'Instructor', email: 'inst@example.com', password: 'inst123' },
-    { type: 'Admin', email: 'admin@example.com', password: 'admin123' },
+    { type: 'Student', email: 'bob@student.edu', password: 'password123' },
+    { type: 'Instructor', email: 'john@university.edu', password: 'password123' },
+    { type: 'Admin', email: 'alice@admin.com', password: 'password123' },
   ];
 
   const fillDemoAccount = (email, password) => {
     setFormData(prev => ({ ...prev, email, password }));
+  };
+
+  const handleCloseErrorDialog = () => {
+    setShowErrorDialog(false);
+    setDialogError(null);
+  };
+
+  const handleRetryLogin = () => {
+    setShowErrorDialog(false);
+    setDialogError(null);
+    // Optionally clear form or focus on email field
+    document.getElementById('email')?.focus();
   };
 
   return (
@@ -185,6 +227,14 @@ const Login = () => {
             </div>
           </div>
         </div>
+        
+        {/* Error Dialog for critical authentication errors */}
+        <ErrorDialog
+          error={dialogError}
+          isOpen={showErrorDialog}
+          onClose={handleCloseErrorDialog}
+          onRetry={handleRetryLogin}
+        />
       </div>
     </div>
   );

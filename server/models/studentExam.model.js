@@ -57,15 +57,24 @@ const studentExamSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  isApproved: {
+    type: Boolean,
+    default: false
+  },
+  gradedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  gradedAt: {
+    type: Date,
+    default: null
+  },
   startedAt: {
     type: Date,
     default: null
   },
   submittedAt: {
-    type: Date,
-    default: null
-  },
-  gradedAt: {
     type: Date,
     default: null
   },

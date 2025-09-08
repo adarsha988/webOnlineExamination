@@ -19,7 +19,39 @@ export const loginUser = createAsyncThunk(
       return { user, token };
     } catch (error) {
       console.error('❌ LOGIN ERROR:', error);
-      return rejectWithValue(error.message || 'Login failed');
+      
+      // Parse different types of authentication errors
+      let errorMessage = 'Login failed';
+      
+      if (error.message.includes('401')) {
+        errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+      } else if (error.message.includes('403')) {
+        errorMessage = 'Access denied. Your account may be suspended or inactive.';
+      } else if (error.message.includes('429')) {
+        errorMessage = 'Too many login attempts. Please wait a few minutes before trying again.';
+      } else if (error.message.includes('500')) {
+        errorMessage = 'Server error. Please try again later or contact support.';
+      } else if (error.message.includes('Network')) {
+        errorMessage = 'Network connection error. Please check your internet connection.';
+      } else if (error.message) {
+        // Extract meaningful error message from server response
+        const serverError = error.message.replace(/^\d+:\s*/, '');
+        try {
+          const parsed = JSON.parse(serverError);
+          errorMessage = parsed.message || errorMessage;
+        } catch {
+          errorMessage = serverError || errorMessage;
+        }
+      }
+      
+      return rejectWithValue({
+        message: errorMessage,
+        code: error.message.includes('401') ? 'UNAUTHORIZED' : 
+              error.message.includes('403') ? 'FORBIDDEN' :
+              error.message.includes('429') ? 'RATE_LIMITED' :
+              error.message.includes('500') ? 'SERVER_ERROR' :
+              error.message.includes('Network') ? 'NETWORK_ERROR' : 'UNKNOWN'
+      });
     }
   }
 );
@@ -67,7 +99,13 @@ export const logoutUser = createAsyncThunk(
     
     // Prevent double execution if already logging out
     if (state.auth.isLoading) {
-      console.log('🔄 LOGOUT ALREADY IN PROGRESS - Skipping duplicate request');
+      console.log('🔄 LOGOUT ALREADY IN PROGRESS - But still clearing localStorage');
+      // Still clear localStorage even if skipping server call
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('authState');
+      localStorage.removeItem('studentAnalytics');
+      console.log('🧹 DUPLICATE LOGOUT - localStorage cleared');
       return { success: true };
     }
     
@@ -80,9 +118,12 @@ export const logoutUser = createAsyncThunk(
       const response = await apiRequest('POST', '/api/auth/logout');
       console.log('✅ SERVER LOGOUT SUCCESS - Response:', response.status);
       
-      // Clear token from localStorage regardless of server response
+      // Clear all authentication data from localStorage
       const tokenBefore = localStorage.getItem('token');
       localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('authState');
+      localStorage.removeItem('studentAnalytics');
       const tokenAfter = localStorage.getItem('token');
       
       console.log('🧹 TOKEN CLEANUP - Before:', !!tokenBefore, 'After:', !!tokenAfter);
@@ -93,9 +134,12 @@ export const logoutUser = createAsyncThunk(
       console.error('❌ SERVER LOGOUT FAILED - Error details:', error);
       console.error('📋 ERROR STACK:', error.stack);
       
-      // Even if server call fails, clear local storage for UX
+      // Even if server call fails, clear all authentication data for UX
       const tokenBefore = localStorage.getItem('token');
       localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('authState');
+      localStorage.removeItem('studentAnalytics');
       const tokenAfter = localStorage.getItem('token');
       
       console.log('🧹 FALLBACK TOKEN CLEANUP - Before:', !!tokenBefore, 'After:', !!tokenAfter);
@@ -120,6 +164,9 @@ const authSlice = createSlice({
   reducers: {
     logout: (state) => {
       localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('authState');
+      localStorage.removeItem('studentAnalytics');
       state.user = null;
       state.token = null;
       state.isAuthenticated = false;
@@ -153,7 +200,7 @@ const authSlice = createSlice({
       .addCase(loginUser.rejected, (state, action) => {
         console.log('💥 LOGIN REJECTED:', action.payload);
         state.isLoading = false;
-        state.error = action.payload;
+        state.error = action.payload?.message || action.payload || 'Login failed';
         state.isAuthenticated = false;
       })
       // Register
@@ -170,7 +217,7 @@ const authSlice = createSlice({
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.isLoading = false;
-        state.error = action.payload;
+        state.error = action.payload?.message || action.payload || 'Registration failed';
         state.isAuthenticated = false;
       })
       // Check Auth
@@ -187,7 +234,7 @@ const authSlice = createSlice({
       .addCase(checkAuth.rejected, (state, action) => {
         state.isLoading = false;
         // Only set error if it's not a silent rejection (null payload)
-        state.error = action.payload;
+        state.error = action.payload?.message || action.payload || null;
         state.isAuthenticated = false;
         state.user = null;
         state.token = null;
@@ -211,7 +258,7 @@ const authSlice = createSlice({
       .addCase(logoutUser.rejected, (state, action) => {
         console.log('💥 LOGOUT REJECTED - Error:', action.payload);
         state.isLoading = false;
-        state.error = action.payload;
+        state.error = action.payload?.message || action.payload || 'Logout failed';
         console.log('📊 LOGOUT REJECTED STATE - isLoading:', state.isLoading, 'error:', state.error);
       });
   },

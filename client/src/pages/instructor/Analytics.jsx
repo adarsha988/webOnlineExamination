@@ -45,13 +45,13 @@ const Analytics = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`/api/analytics/instructor/${user.id}?timeframe=${timeframe}`, {
+      const response = await fetch(`/api/exams/instructor/${user.id}/analytics`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       if (response.ok) {
         const data = await response.json();
-        setAnalytics(data);
+        setAnalytics(data.analytics);
       }
     } catch (error) {
       console.error('Error fetching analytics:', error);
@@ -132,92 +132,69 @@ const Analytics = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           icon={BookOpen}
-          title="Total Questions"
-          value={analytics.personal.totalQuestions}
-          subtitle="Personal questions created"
+          title="Total Exams"
+          value={analytics.totalExams || 0}
+          subtitle="Exams created"
           color="text-blue-600"
         />
         <StatCard
           icon={Share2}
-          title="Shared Questions"
-          value={analytics.shared.total}
-          subtitle={`${analytics.shared.approved} approved`}
+          title="Total Attempts"
+          value={analytics.totalAttempts || 0}
+          subtitle="Student attempts"
           color="text-green-600"
         />
         <StatCard
           icon={Target}
           title="Average Score"
-          value={`${analytics.examUsage.avgStudentScore}%`}
+          value={`${analytics.avgScore || 0}%`}
           subtitle="Student performance"
           color="text-purple-600"
         />
         <StatCard
           icon={Users}
           title="Pass Rate"
-          value={`${analytics.examUsage.passRate}%`}
+          value={`${analytics.passRate || 0}%`}
           subtitle="Students passing exams"
           color="text-orange-600"
         />
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="questions">Questions</TabsTrigger>
-          <TabsTrigger value="shared">Shared Banks</TabsTrigger>
           <TabsTrigger value="performance">Performance</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Question Creation Trends */}
+            {/* Exam Status Distribution */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <BarChart3 className="h-5 w-5" />
-                  Question Creation Trends
+                  Exam Status Distribution
                 </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={analytics.trends}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="_id.date" />
-                    <YAxis />
-                    <Tooltip />
-                    <Area 
-                      type="monotone" 
-                      dataKey="count" 
-                      stackId="1"
-                      stroke="#8884d8" 
-                      fill="#8884d8" 
-                      fillOpacity={0.6}
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            {/* Question Distribution by Difficulty */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Questions by Difficulty</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
-                      data={analytics.personal.byDifficulty}
+                      data={Object.entries(analytics.examsByStatus || {}).map(([status, count]) => ({
+                        name: status.charAt(0).toUpperCase() + status.slice(1),
+                        value: count
+                      }))}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      label={({ name, value }) => `${name}: ${value}`}
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {analytics.personal.byDifficulty.map((entry, index) => (
+                      {Object.entries(analytics.examsByStatus || {}).map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
@@ -226,21 +203,42 @@ const Analytics = () => {
                 </ResponsiveContainer>
               </CardContent>
             </Card>
+
+            {/* Attempt Status Distribution */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Attempt Status</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={Object.entries(analytics.attemptsByStatus || {}).map(([status, count]) => ({
+                    name: status.replace('_', ' ').charAt(0).toUpperCase() + status.replace('_', ' ').slice(1),
+                    value: count
+                  }))}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="value" fill="#0088FE" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Recent Activity */}
+          {/* Recent Exams */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Clock className="h-5 w-5" />
-                Recent Activity
+                Recent Exams
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {analytics.recentActivity.slice(0, 5).map((activity, index) => (
+                {analytics.recentExams?.slice(0, 5).map((exam, index) => (
                   <motion.div
-                    key={activity._id}
+                    key={exam.id}
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
@@ -252,13 +250,18 @@ const Analytics = () => {
                       </div>
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">{activity.description}</p>
+                      <p className="text-sm font-medium text-gray-900">{exam.title}</p>
                       <p className="text-xs text-gray-500">
-                        {new Date(activity.createdAt).toLocaleDateString()}
+                        {exam.totalAttempts || 0} attempts • Avg: {exam.averageScore || 0}%
                       </p>
                     </div>
+                    <Badge variant={exam.status === 'published' ? 'default' : 'secondary'}>
+                      {exam.status}
+                    </Badge>
                   </motion.div>
-                ))}
+                )) || (
+                  <p className="text-center text-gray-500 py-4">No recent exams available</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -342,88 +345,6 @@ const Analytics = () => {
           </div>
         </TabsContent>
 
-        {/* Shared Banks Tab */}
-        <TabsContent value="shared" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Shared Banks</p>
-                    <p className="text-2xl font-bold text-gray-900">{analytics.shared.banks.length}</p>
-                    <p className="text-xs text-gray-500">Participating in</p>
-                  </div>
-                  <Share2 className="h-8 w-8 text-blue-600" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Approved Questions</p>
-                    <p className="text-2xl font-bold text-gray-900">{analytics.shared.approved}</p>
-                    <p className="text-xs text-gray-500">Out of {analytics.shared.total} submitted</p>
-                  </div>
-                  <CheckCircle className="h-8 w-8 text-green-600" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Approval Rate</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {analytics.shared.total > 0 ? Math.round((analytics.shared.approved / analytics.shared.total) * 100) : 0}%
-                    </p>
-                    <p className="text-xs text-gray-500">Questions approved</p>
-                  </div>
-                  <Target className="h-8 w-8 text-purple-600" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Shared Banks List */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Your Shared Banks</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {analytics.shared.banks.map((bank, index) => (
-                  <motion.div
-                    key={bank.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <BookOpen className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{bank.name}</h3>
-                        <p className="text-sm text-gray-600">{bank.subject}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <Badge variant={bank.isOwner ? 'default' : 'secondary'}>
-                        {bank.isOwner ? 'Owner' : 'Collaborator'}
-                      </Badge>
-                      <div className="text-right">
-                        <p className="text-sm font-medium">{bank.stats.totalQuestions} questions</p>
-                        <p className="text-xs text-gray-500">{bank.stats.approvedQuestions} approved</p>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         {/* Performance Tab */}
         <TabsContent value="performance" className="space-y-6">
@@ -511,7 +432,7 @@ const Analytics = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <TrendingUp className="w-4 h-4 text-blue-600" />
-                      <span className="text-sm">Collaborate more in shared banks</span>
+                      <span className="text-sm">Create more diverse question types</span>
                     </div>
                   </div>
                 </div>

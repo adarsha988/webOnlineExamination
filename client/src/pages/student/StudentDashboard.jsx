@@ -22,6 +22,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { studentExamAPI, studentNotificationsAPI } from '@/api/studentExams';
 import NotificationDropdown from '@/components/student/NotificationDropdown';
 import ExamCard from '@/components/student/ExamCard';
+import StudentLayout from '@/layouts/StudentLayout';
 import { useLocation } from 'wouter';
 
 const StudentDashboard = () => {
@@ -38,19 +39,19 @@ const StudentDashboard = () => {
 
   useEffect(() => {
     console.log('🔍 DASHBOARD: useEffect triggered, user:', user);
-    if (user && (user._id || user.id)) {
+    if (user && user.email) {
       console.log('✅ DASHBOARD: User found, calling fetchDashboardData');
       fetchDashboardData();
     } else {
-      console.log('❌ DASHBOARD: No user or user ID found');
+      console.log('❌ DASHBOARD: No user or user identifier found');
     }
   }, [user]);
 
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const studentId = user._id || user.id;
-      console.log('📊 DASHBOARD: Fetching data for student:', studentId);
+      const studentIdentifier = user.email;
+      console.log('📊 DASHBOARD: Fetching data for student:', studentIdentifier);
       console.log('👤 DASHBOARD: User object:', user);
 
       // Fetch all dashboard data in parallel
@@ -61,19 +62,19 @@ const StudentDashboard = () => {
         completedRes,
         notificationsRes
       ] = await Promise.all([
-        studentExamAPI.getUpcomingExams(studentId).catch(err => {
+        studentExamAPI.getUpcomingExams(studentIdentifier).catch(err => {
           console.error('❌ UPCOMING EXAMS ERROR:', err);
           return { data: [] };
         }),
-        studentExamAPI.getOngoingExams(studentId).catch(err => {
+        studentExamAPI.getOngoingExams(studentIdentifier).catch(err => {
           console.error('❌ ONGOING EXAMS ERROR:', err);
           return { data: [] };
         }),
-        studentExamAPI.getCompletedExams(studentId, 1, 5).catch(err => {
+        studentExamAPI.getCompletedExams(studentIdentifier, 1, 5).catch(err => {
           console.error('❌ COMPLETED EXAMS ERROR:', err);
           return { data: [] };
         }),
-        studentNotificationsAPI.getNotifications(studentId, 1, 5).catch(err => {
+        studentNotificationsAPI.getNotifications(studentIdentifier, 1, 5).catch(err => {
           console.error('❌ NOTIFICATIONS ERROR:', err);
           return { data: [] };
         })
@@ -117,7 +118,8 @@ const StudentDashboard = () => {
 
   const handleStartExam = async (examId) => {
     try {
-      const response = await studentExamAPI.startExam(examId, user._id);
+      const studentIdentifier = user.email;
+      const response = await studentExamAPI.startExam(examId, studentIdentifier, {});
       if (response.success) {
         setLocation(`/student/exam/${examId}`);
         toast({
@@ -189,24 +191,25 @@ const StudentDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">
-              Welcome back, {user?.name}!
-            </h1>
-            <p className="text-gray-600 mt-1">
-              Here's what's happening with your exams today.
-            </p>
+    <StudentLayout>
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Welcome back, {user?.name}!
+              </h1>
+              <p className="text-gray-600 mt-1">
+                Here's what's happening with your exams today.
+              </p>
+            </div>
+            <NotificationDropdown 
+              notifications={notifications}
+              unreadCount={unreadCount}
+              onMarkAsRead={fetchDashboardData}
+            />
           </div>
-          <NotificationDropdown 
-            notifications={notifications}
-            unreadCount={unreadCount}
-            onMarkAsRead={fetchDashboardData}
-          />
-        </div>
 
 
         {/* Main Content */}
@@ -234,8 +237,8 @@ const StudentDashboard = () => {
                       <CardHeader className="pb-3">
                         <div className="flex justify-between items-start">
                           <div>
-                            <CardTitle className="text-lg">{exam.examId.title}</CardTitle>
-                            <CardDescription>{exam.examId.subject}</CardDescription>
+                            <CardTitle className="text-lg">{exam.examId?.title || exam.title || 'Untitled Exam'}</CardTitle>
+                            <CardDescription>{exam.examId?.subject || exam.subject || 'No Subject'}</CardDescription>
                           </div>
                           <Badge variant="default" className="bg-yellow-500">
                             In Progress
@@ -248,7 +251,7 @@ const StudentDashboard = () => {
                             {formatTimeRemaining(exam.timeRemaining)}
                           </div>
                           <Button 
-                            onClick={() => handleResumeExam(exam.examId._id)}
+                            onClick={() => handleResumeExam(exam.examId?._id || exam._id)}
                             className="w-full"
                           >
                             <Play className="h-4 w-4 mr-2" />
@@ -380,8 +383,9 @@ const StudentDashboard = () => {
             </div>
           </TabsContent>
         </Tabs>
+        </div>
       </div>
-    </div>
+    </StudentLayout>
   );
 };
 

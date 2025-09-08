@@ -3,82 +3,64 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/components/ui/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Search, 
   Plus, 
-  Filter, 
-  Download, 
-  Upload,
   Edit,
   Trash2,
-  Eye,
-  Users,
-  Lock,
-  CheckCircle,
-  Clock,
-  AlertCircle,
-  FileText
+  Eye
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { questionBankAPI } from '../../api/questionBank';
 
 const QuestionBank = () => {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('private');
   const [questions, setQuestions] = useState([]);
-  const [sharedBanks, setSharedBanks] = useState([]);
-  const [selectedBank, setSelectedBank] = useState(null);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filters, setFilters] = useState({
-    subject: '',
-    difficulty: '',
-    type: '',
-    status: ''
-  });
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
     totalItems: 0
   });
-  const [showImportDialog, setShowImportDialog] = useState(false);
-  const [showExportDialog, setShowExportDialog] = useState(false);
-  const [importFile, setImportFile] = useState(null);
-  const [exportFormat, setExportFormat] = useState('csv');
-  const [isImporting, setIsImporting] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showViewDialog, setShowViewDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [selectedQuestion, setSelectedQuestion] = useState(null);
+  const [newQuestion, setNewQuestion] = useState({
+    questionText: '',
+    type: 'mcq',
+    subject: '',
+    difficulty: 'medium',
+    marks: 1,
+    options: ['', '', '', ''],
+    correctAnswer: 0,
+    explanation: ''
+  });
+  const [editQuestion, setEditQuestion] = useState({
+    questionText: '',
+    type: 'mcq',
+    subject: '',
+    difficulty: 'medium',
+    marks: 1,
+    options: ['', '', '', ''],
+    correctAnswer: 0,
+    explanation: ''
+  });
 
-  // Fetch questions based on current tab and filters
+  // Fetch questions
   const fetchQuestions = async (page = 1) => {
     setLoading(true);
     try {
-      let data;
-      
-      if (activeTab === 'shared' && !selectedBank) {
-        // Fetch approved questions from all accessible shared banks
-        const params = {
-          page,
-          limit: 20,
-          ...(searchTerm && { search: searchTerm }),
-          ...Object.fromEntries(Object.entries(filters).filter(([_, v]) => v))
-        };
-        data = await questionBankAPI.getApprovedQuestions(params);
-      } else {
-        // Fetch questions from specific scope/bank
-        const params = {
-          page,
-          limit: 20,
-          scope: activeTab,
-          ...(selectedBank && { sharedBankId: selectedBank._id }),
-          ...(searchTerm && { search: searchTerm }),
-          ...Object.fromEntries(Object.entries(filters).filter(([_, v]) => v))
-        };
-        data = await questionBankAPI.getQuestions(params);
-      }
+      const params = {
+        page,
+        limit: 20,
+        scope: 'private',
+        ...(searchTerm && { search: searchTerm })
+      };
+      const data = await questionBankAPI.getQuestions(params);
 
       setQuestions(data.questions || []);
       setPagination(data.pagination || { currentPage: 1, totalPages: 1, totalItems: 0 });
@@ -94,104 +76,92 @@ const QuestionBank = () => {
     }
   };
 
-  // Fetch shared banks
-  const fetchSharedBanks = async () => {
+  // Handle add question
+  const handleAddQuestion = async () => {
     try {
-      const data = await questionBankAPI.getSharedBanks();
-      setSharedBanks(data.sharedBanks || []);
-    } catch (error) {
-      console.error('Error fetching shared banks:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch shared banks. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  // Handle file import
-  const handleImport = async () => {
-    if (!importFile) {
-      toast({
-        title: "Error",
-        description: "Please select a file to import.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsImporting(true);
-    try {
-      const result = await questionBankAPI.importQuestions(
-        importFile,
-        activeTab,
-        selectedBank?._id
-      );
-
-      toast({
-        title: "Import Successful",
-        description: `Imported ${result.summary.imported} questions. ${result.summary.errors > 0 ? `${result.summary.errors} errors occurred.` : ''}`
-      });
-
-      setShowImportDialog(false);
-      setImportFile(null);
-      fetchQuestions(); // Refresh questions list
-    } catch (error) {
-      console.error('Import error:', error);
-      toast({
-        title: "Import Failed",
-        description: error.message || "Failed to import questions. Please check your file format.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsImporting(false);
-    }
-  };
-
-  // Handle export
-  const handleExport = async () => {
-    setIsExporting(true);
-    try {
-      const params = {
-        format: exportFormat,
-        scope: activeTab,
-        ...(selectedBank && { sharedBankId: selectedBank._id }),
-        ...Object.fromEntries(Object.entries(filters).filter(([_, v]) => v))
+      const questionData = {
+        ...newQuestion,
+        scope: 'private'
       };
-
-      await questionBankAPI.exportQuestions(params);
+      
+      await questionBankAPI.createQuestion(questionData);
       
       toast({
-        title: "Export Successful",
-        description: "Questions exported successfully."
+        title: "Question Added",
+        description: "Question created successfully."
       });
 
-      setShowExportDialog(false);
+      setShowAddDialog(false);
+      setNewQuestion({
+        questionText: '',
+        type: 'mcq',
+        subject: '',
+        difficulty: 'medium',
+        marks: 1,
+        options: ['', '', '', ''],
+        correctAnswer: 0,
+        explanation: ''
+      });
+      fetchQuestions(); // Refresh questions list
     } catch (error) {
-      console.error('Export error:', error);
+      console.error('Add question error:', error);
       toast({
-        title: "Export Failed",
-        description: error.message || "Failed to export questions.",
+        title: "Add Failed",
+        description: error.message || "Failed to add question.",
         variant: "destructive"
       });
-    } finally {
-      setIsExporting(false);
     }
   };
 
-  // Download template
-  const handleDownloadTemplate = async (format) => {
+  // Handle view question
+  const handleViewQuestion = (question) => {
+    setSelectedQuestion(question);
+    setShowViewDialog(true);
+  };
+
+  // Handle edit question
+  const handleEditQuestion = (question) => {
+    setSelectedQuestion(question);
+    setEditQuestion({
+      questionText: question.questionText,
+      type: question.type,
+      subject: question.subject,
+      difficulty: question.difficulty,
+      marks: question.marks,
+      options: question.options || ['', '', '', ''],
+      correctAnswer: question.type === 'mcq' ? 
+        (question.options ? question.options.indexOf(question.correctAnswer) : 0) : 
+        question.correctAnswer,
+      explanation: question.explanation || ''
+    });
+    setShowEditDialog(true);
+  };
+
+  // Handle update question
+  const handleUpdateQuestion = async () => {
     try {
-      await questionBankAPI.downloadTemplate(format);
+      const questionData = {
+        ...editQuestion,
+        correctAnswer: editQuestion.type === 'mcq' ? 
+          editQuestion.options[editQuestion.correctAnswer] : 
+          editQuestion.correctAnswer
+      };
+      
+      await questionBankAPI.updateQuestion(selectedQuestion._id, questionData);
+      
       toast({
-        title: "Template Downloaded",
-        description: `Import template (${format.toUpperCase()}) downloaded successfully.`
+        title: "Question Updated",
+        description: "Question updated successfully."
       });
+
+      setShowEditDialog(false);
+      setSelectedQuestion(null);
+      fetchQuestions(); // Refresh questions list
     } catch (error) {
-      console.error('Template download error:', error);
+      console.error('Update question error:', error);
       toast({
-        title: "Download Failed",
-        description: "Failed to download template.",
+        title: "Update Failed",
+        description: error.message || "Failed to update question.",
         variant: "destructive"
       });
     }
@@ -220,28 +190,8 @@ const QuestionBank = () => {
 
   useEffect(() => {
     fetchQuestions();
-    if (activeTab === 'shared') {
-      fetchSharedBanks();
-    }
-  }, [activeTab, selectedBank, searchTerm, filters]);
+  }, [searchTerm]);
 
-  const getStatusBadge = (status) => {
-    const statusConfig = {
-      approved: { color: 'bg-green-100 text-green-800', icon: CheckCircle },
-      suggested: { color: 'bg-yellow-100 text-yellow-800', icon: Clock },
-      draft: { color: 'bg-gray-100 text-gray-800', icon: AlertCircle }
-    };
-
-    const config = statusConfig[status] || statusConfig.draft;
-    const Icon = config.icon;
-
-    return (
-      <Badge className={`${config.color} flex items-center gap-1`}>
-        <Icon className="w-3 h-3" />
-        {status}
-      </Badge>
-    );
-  };
 
   const getDifficultyColor = (difficulty) => {
     const colors = {
@@ -258,531 +208,458 @@ const QuestionBank = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Question Bank</h1>
-          <p className="text-gray-600 mt-1">Manage your private and shared question collections</p>
+          <p className="text-gray-600 mt-1">Manage your question collection</p>
         </div>
         <div className="flex gap-3">
-          <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
+          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
             <DialogTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2">
-                <Upload className="w-4 h-4" />
-                Import
+              <Button className="flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                Add Question
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Import Questions</DialogTitle>
+                <DialogTitle>Add New Question</DialogTitle>
+                <DialogDescription>
+                  Create a new question for your question bank. Fill in all the required details below.
+                </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4">
+              <div className="space-y-4 max-h-[calc(90vh-120px)] overflow-y-auto pr-2">
                 <div>
-                  <label className="block text-sm font-medium mb-2">Select File</label>
-                  <Input
-                    type="file"
-                    accept=".csv,.xlsx,.xls"
-                    onChange={(e) => setImportFile(e.target.files[0])}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Supported formats: CSV, Excel (.xlsx, .xls)
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDownloadTemplate('csv')}
-                  >
-                    <FileText className="w-4 h-4 mr-2" />
-                    CSV Template
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDownloadTemplate('xlsx')}
-                  >
-                    <FileText className="w-4 h-4 mr-2" />
-                    Excel Template
-                  </Button>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setShowImportDialog(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleImport} disabled={!importFile || isImporting}>
-                    {isImporting ? 'Importing...' : 'Import'}
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2">
-                <Download className="w-4 h-4" />
-                Export
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Export Questions</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Export Format</label>
-                  <Select value={exportFormat} onValueChange={setExportFormat}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="csv">CSV</SelectItem>
-                      <SelectItem value="xlsx">Excel</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Export will include questions based on current filters and scope.
-                </p>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setShowExportDialog(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleExport} disabled={isExporting}>
-                    {isExporting ? 'Exporting...' : 'Export'}
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-
-          <Button className="flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            New Question
-          </Button>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="private" className="flex items-center gap-2">
-            <Lock className="w-4 h-4" />
-            My Questions
-          </TabsTrigger>
-          <TabsTrigger value="shared" className="flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            Shared Banks
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Private Questions Tab */}
-        <TabsContent value="private" className="space-y-6">
-          {/* Search and Filters */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex gap-4 items-center">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                  <Input
-                    placeholder="Search questions..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
+                  <label className="block text-sm font-medium mb-2">Question Text</label>
+                  <textarea
+                    value={newQuestion.questionText}
+                    onChange={(e) => setNewQuestion(prev => ({ ...prev, questionText: e.target.value }))}
+                    className="w-full p-3 border rounded-md"
+                    rows={3}
+                    placeholder="Enter your question..."
                   />
                 </div>
-                <select
-                  value={filters.subject}
-                  onChange={(e) => setFilters(prev => ({ ...prev, subject: e.target.value }))}
-                  className="px-3 py-2 border rounded-md"
-                >
-                  <option value="">All Subjects</option>
-                  <option value="Mathematics">Mathematics</option>
-                  <option value="Science">Science</option>
-                  <option value="English">English</option>
-                </select>
-                <select
-                  value={filters.difficulty}
-                  onChange={(e) => setFilters(prev => ({ ...prev, difficulty: e.target.value }))}
-                  className="px-3 py-2 border rounded-md"
-                >
-                  <option value="">All Difficulties</option>
-                  <option value="easy">Easy</option>
-                  <option value="medium">Medium</option>
-                  <option value="hard">Hard</option>
-                </select>
-                <select
-                  value={filters.type}
-                  onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
-                  className="px-3 py-2 border rounded-md"
-                >
-                  <option value="">All Types</option>
-                  <option value="mcq">Multiple Choice</option>
-                  <option value="truefalse">True/False</option>
-                  <option value="short">Short Answer</option>
-                  <option value="long">Long Answer</option>
-                </select>
-              </div>
-            </CardContent>
-          </Card>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Subject</label>
+                    <Input
+                      value={newQuestion.subject}
+                      onChange={(e) => setNewQuestion(prev => ({ ...prev, subject: e.target.value }))}
+                      placeholder="e.g., Mathematics"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Marks</label>
+                    <Input
+                      type="number"
+                      value={newQuestion.marks}
+                      onChange={(e) => setNewQuestion(prev => ({ ...prev, marks: parseInt(e.target.value) || 1 }))}
+                      min="1"
+                    />
+                  </div>
+                </div>
 
-          {/* Questions List */}
-          <div className="space-y-4">
-            <AnimatePresence>
-              {questions.map((question, index) => (
-                <motion.div
-                  key={question._id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <Card className="hover:shadow-lg transition-all duration-200">
-                    <CardContent className="p-6">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <Badge variant="outline">{question.subject}</Badge>
-                            <Badge className={getDifficultyColor(question.difficulty)}>
-                              {question.difficulty}
-                            </Badge>
-                            <Badge variant="secondary">{question.type}</Badge>
-                            {question.scope === 'shared' && getStatusBadge(question.status)}
-                          </div>
-                          <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                            {question.questionText}
-                          </h3>
-                          <div className="flex items-center gap-4 text-sm text-gray-600">
-                            <span>Marks: {question.marks}</span>
-                            <span>Created: {new Date(question.createdAt).toLocaleDateString()}</span>
-                            {question.tags && question.tags.length > 0 && (
-                              <div className="flex gap-1">
-                                {question.tags.slice(0, 3).map(tag => (
-                                  <Badge key={tag} variant="outline" className="text-xs">
-                                    {tag}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button variant="ghost" size="sm">
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-red-600 hover:text-red-700"
-                            onClick={() => handleDeleteQuestion(question._id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-
-          {/* Pagination */}
-          {pagination.totalPages > 1 && (
-            <div className="flex justify-center gap-2">
-              <Button
-                variant="outline"
-                disabled={pagination.currentPage === 1}
-                onClick={() => fetchQuestions(pagination.currentPage - 1)}
-              >
-                Previous
-              </Button>
-              <span className="flex items-center px-4">
-                Page {pagination.currentPage} of {pagination.totalPages}
-              </span>
-              <Button
-                variant="outline"
-                disabled={pagination.currentPage === pagination.totalPages}
-                onClick={() => fetchQuestions(pagination.currentPage + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          )}
-        </TabsContent>
-
-        {/* Shared Banks Tab */}
-        <TabsContent value="shared" className="space-y-6">
-          {!selectedBank ? (
-            <div className="space-y-6">
-              {/* Approved Questions from All Shared Banks */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-green-600" />
-                    Approved Questions from Shared Banks
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Browse approved questions from shared banks you have access to
-                  </p>
-                </CardHeader>
-              </Card>
-
-              {/* Search and Filters for Approved Questions */}
-              <Card>
-                <CardContent className="p-4">
-                  <div className="flex gap-4 items-center">
-                    <div className="flex-1 relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                      <Input
-                        placeholder="Search approved questions..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10"
-                      />
-                    </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Type</label>
                     <select
-                      value={filters.subject}
-                      onChange={(e) => setFilters(prev => ({ ...prev, subject: e.target.value }))}
-                      className="px-3 py-2 border rounded-md"
+                      value={newQuestion.type}
+                      onChange={(e) => setNewQuestion(prev => ({ ...prev, type: e.target.value }))}
+                      className="w-full p-2 border rounded-md"
                     >
-                      <option value="">All Subjects</option>
-                      <option value="Mathematics">Mathematics</option>
-                      <option value="Science">Science</option>
-                      <option value="English">English</option>
-                    </select>
-                    <select
-                      value={filters.difficulty}
-                      onChange={(e) => setFilters(prev => ({ ...prev, difficulty: e.target.value }))}
-                      className="px-3 py-2 border rounded-md"
-                    >
-                      <option value="">All Difficulties</option>
-                      <option value="easy">Easy</option>
-                      <option value="medium">Medium</option>
-                      <option value="hard">Hard</option>
-                    </select>
-                    <select
-                      value={filters.type}
-                      onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value }))}
-                      className="px-3 py-2 border rounded-md"
-                    >
-                      <option value="">All Types</option>
                       <option value="mcq">Multiple Choice</option>
                       <option value="truefalse">True/False</option>
                       <option value="short">Short Answer</option>
                       <option value="long">Long Answer</option>
                     </select>
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* Approved Questions List */}
-              <div className="space-y-4">
-                <AnimatePresence>
-                  {questions.map((question, index) => (
-                    <motion.div
-                      key={question._id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ delay: index * 0.1 }}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Difficulty</label>
+                    <select
+                      value={newQuestion.difficulty}
+                      onChange={(e) => setNewQuestion(prev => ({ ...prev, difficulty: e.target.value }))}
+                      className="w-full p-2 border rounded-md"
                     >
-                      <Card className="hover:shadow-lg transition-all duration-200">
-                        <CardContent className="p-6">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                <Badge variant="outline">{question.subject}</Badge>
-                                <Badge className={getDifficultyColor(question.difficulty)}>
-                                  {question.difficulty}
-                                </Badge>
-                                <Badge variant="secondary">{question.type}</Badge>
-                                <Badge className="bg-green-100 text-green-800 flex items-center gap-1">
-                                  <CheckCircle className="w-3 h-3" />
-                                  Approved
-                                </Badge>
-                                {question.sharedBank && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {question.sharedBank.name}
-                                  </Badge>
-                                )}
-                              </div>
-                              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                                {question.questionText}
-                              </h3>
-                              <div className="flex items-center gap-4 text-sm text-gray-600">
-                                <span>Marks: {question.marks}</span>
-                                <span>By: {question.createdBy?.name}</span>
-                                <span>Created: {new Date(question.createdAt).toLocaleDateString()}</span>
-                                {question.sharedBank && (
-                                  <span>Bank: {question.sharedBank.name}</span>
-                                )}
-                              </div>
-                              {question.tags && question.tags.length > 0 && (
-                                <div className="flex gap-1 mt-2">
-                                  {question.tags.slice(0, 3).map(tag => (
-                                    <Badge key={tag} variant="outline" className="text-xs">
-                                      {tag}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex gap-2">
-                              <Button variant="ghost" size="sm">
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                              <Button variant="outline" size="sm" className="text-blue-600">
-                                <Plus className="w-4 h-4 mr-1" />
-                                Use in Exam
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
+                      <option value="easy">Easy</option>
+                      <option value="medium">Medium</option>
+                      <option value="hard">Hard</option>
+                    </select>
+                  </div>
+                </div>
 
-              {/* Show message if no approved questions */}
-              {!loading && questions.length === 0 && (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-foreground mb-2">No Approved Questions Found</h3>
-                    <p className="text-muted-foreground mb-4">
-                      No approved questions are available from shared banks you have access to.
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Shared Banks List */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="w-5 h-5" />
-                    Available Shared Banks
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Shared question banks you can collaborate on
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {sharedBanks.map(bank => (
-                      <Card 
-                        key={bank._id}
-                        className="cursor-pointer hover:shadow-md transition-all duration-200"
-                        onClick={() => setSelectedBank(bank)}
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-semibold">{bank.name}</h4>
-                            <Badge variant={bank.userPermissions?.isOwner ? 'default' : 'secondary'} className="text-xs">
-                              {bank.userPermissions?.isOwner ? 'Owner' : 'Member'}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-gray-600 mb-3">{bank.description}</p>
-                          <div className="space-y-1 text-xs">
-                            <div className="flex justify-between">
-                              <span>Subject:</span>
-                              <Badge variant="outline" className="text-xs">{bank.subject}</Badge>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Questions:</span>
-                              <span>{bank.stats?.totalQuestions || 0}</span>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                {newQuestion.type === 'mcq' && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Options</label>
+                    {newQuestion.options.map((option, index) => (
+                      <div key={index} className="flex gap-2 mb-2">
+                        <Input
+                          value={option}
+                          onChange={(e) => {
+                            const newOptions = [...newQuestion.options];
+                            newOptions[index] = e.target.value;
+                            setNewQuestion(prev => ({ ...prev, options: newOptions }));
+                          }}
+                          placeholder={`Option ${index + 1}`}
+                        />
+                        <input
+                          type="radio"
+                          name="correctAnswer"
+                          checked={newQuestion.correctAnswer === index}
+                          onChange={() => setNewQuestion(prev => ({ ...prev, correctAnswer: index }))}
+                          className="mt-3"
+                        />
+                      </div>
                     ))}
                   </div>
-                  {sharedBanks.length === 0 && (
-                    <div className="text-center py-8">
-                      <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground">No shared banks available</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          ) : (
-            // Selected Bank Questions
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <CardTitle>{selectedBank.name}</CardTitle>
-                      <p className="text-gray-600">{selectedBank.description}</p>
-                    </div>
-                    <Button variant="outline" onClick={() => setSelectedBank(null)}>
-                      Back to Banks
-                    </Button>
-                  </div>
-                </CardHeader>
-              </Card>
+                )}
 
-              {/* Same questions list as private tab */}
-              <div className="space-y-4">
-                <AnimatePresence>
-                  {questions.map((question, index) => (
-                    <motion.div
-                      key={question._id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      transition={{ delay: index * 0.1 }}
-                    >
-                      <Card className="hover:shadow-lg transition-all duration-200">
-                        <CardContent className="p-6">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                <Badge variant="outline">{question.subject}</Badge>
-                                <Badge className={getDifficultyColor(question.difficulty)}>
-                                  {question.difficulty}
-                                </Badge>
-                                <Badge variant="secondary">{question.type}</Badge>
-                                {getStatusBadge(question.status)}
-                              </div>
-                              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                                {question.questionText}
-                              </h3>
-                              <div className="flex items-center gap-4 text-sm text-gray-600">
-                                <span>Marks: {question.marks}</span>
-                                <span>By: {question.createdBy?.name}</span>
-                                <span>Created: {new Date(question.createdAt).toLocaleDateString()}</span>
-                              </div>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button variant="ghost" size="sm">
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                              {selectedBank.userPermissions.canEdit && (
-                                <Button variant="ghost" size="sm">
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                              )}
-                              {selectedBank.userPermissions.canApprove && question.status === 'suggested' && (
-                                <Button variant="ghost" size="sm" className="text-green-600">
-                                  <CheckCircle className="w-4 h-4" />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Explanation (Optional)</label>
+                  <textarea
+                    value={newQuestion.explanation}
+                    onChange={(e) => setNewQuestion(prev => ({ ...prev, explanation: e.target.value }))}
+                    className="w-full p-3 border rounded-md"
+                    rows={2}
+                    placeholder="Explain the correct answer..."
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setShowAddDialog(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleAddQuestion} disabled={!newQuestion.questionText || !newQuestion.subject}>
+                    Add Question
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      {/* View Question Dialog */}
+      <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>View Question</DialogTitle>
+            <DialogDescription>
+              Question details and information.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedQuestion && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Question Text</label>
+                <div className="p-3 bg-gray-50 rounded-md">
+                  {selectedQuestion.questionText}
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Subject</label>
+                  <div className="p-2 bg-gray-50 rounded-md">
+                    {selectedQuestion.subject}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Type</label>
+                  <div className="p-2 bg-gray-50 rounded-md">
+                    {selectedQuestion.type}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Difficulty</label>
+                  <div className="p-2 bg-gray-50 rounded-md">
+                    {selectedQuestion.difficulty}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Marks</label>
+                  <div className="p-2 bg-gray-50 rounded-md">
+                    {selectedQuestion.marks}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Created</label>
+                  <div className="p-2 bg-gray-50 rounded-md">
+                    {new Date(selectedQuestion.createdAt).toLocaleDateString()}
+                  </div>
+                </div>
+              </div>
+
+              {selectedQuestion.type === 'mcq' && selectedQuestion.options && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">Options</label>
+                  <div className="space-y-2">
+                    {selectedQuestion.options.map((option, index) => (
+                      <div key={index} className={`p-2 rounded-md flex items-center gap-2 ${
+                        option === selectedQuestion.correctAnswer ? 'bg-green-50 border border-green-200' : 'bg-gray-50'
+                      }`}>
+                        <span className="font-medium">{index + 1}.</span>
+                        <span>{option}</span>
+                        {option === selectedQuestion.correctAnswer && (
+                          <Badge className="ml-auto bg-green-100 text-green-800">Correct</Badge>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedQuestion.explanation && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">Explanation</label>
+                  <div className="p-3 bg-gray-50 rounded-md">
+                    {selectedQuestion.explanation}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <Button onClick={() => setShowViewDialog(false)}>
+                  Close
+                </Button>
               </div>
             </div>
           )}
-        </TabsContent>
-      </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Question Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Question</DialogTitle>
+            <DialogDescription>
+              Update the question details below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 max-h-[calc(90vh-120px)] overflow-y-auto pr-2">
+            <div>
+              <label className="block text-sm font-medium mb-2">Question Text</label>
+              <textarea
+                value={editQuestion.questionText}
+                onChange={(e) => setEditQuestion(prev => ({ ...prev, questionText: e.target.value }))}
+                className="w-full p-3 border rounded-md"
+                rows={3}
+                placeholder="Enter your question..."
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Subject</label>
+                <Input
+                  value={editQuestion.subject}
+                  onChange={(e) => setEditQuestion(prev => ({ ...prev, subject: e.target.value }))}
+                  placeholder="e.g., Mathematics"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Marks</label>
+                <Input
+                  type="number"
+                  value={editQuestion.marks}
+                  onChange={(e) => setEditQuestion(prev => ({ ...prev, marks: parseInt(e.target.value) || 1 }))}
+                  min="1"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Type</label>
+                <select
+                  value={editQuestion.type}
+                  onChange={(e) => setEditQuestion(prev => ({ ...prev, type: e.target.value }))}
+                  className="w-full p-2 border rounded-md"
+                >
+                  <option value="mcq">Multiple Choice</option>
+                  <option value="truefalse">True/False</option>
+                  <option value="short">Short Answer</option>
+                  <option value="long">Long Answer</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Difficulty</label>
+                <select
+                  value={editQuestion.difficulty}
+                  onChange={(e) => setEditQuestion(prev => ({ ...prev, difficulty: e.target.value }))}
+                  className="w-full p-2 border rounded-md"
+                >
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </div>
+            </div>
+
+            {editQuestion.type === 'mcq' && (
+              <div>
+                <label className="block text-sm font-medium mb-2">Options</label>
+                {editQuestion.options.map((option, index) => (
+                  <div key={index} className="flex gap-2 mb-2">
+                    <Input
+                      value={option}
+                      onChange={(e) => {
+                        const newOptions = [...editQuestion.options];
+                        newOptions[index] = e.target.value;
+                        setEditQuestion(prev => ({ ...prev, options: newOptions }));
+                      }}
+                      placeholder={`Option ${index + 1}`}
+                    />
+                    <input
+                      type="radio"
+                      name="editCorrectAnswer"
+                      checked={editQuestion.correctAnswer === index}
+                      onChange={() => setEditQuestion(prev => ({ ...prev, correctAnswer: index }))}
+                      className="mt-3"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium mb-2">Explanation (Optional)</label>
+              <textarea
+                value={editQuestion.explanation}
+                onChange={(e) => setEditQuestion(prev => ({ ...prev, explanation: e.target.value }))}
+                className="w-full p-3 border rounded-md"
+                rows={2}
+                placeholder="Explain the correct answer..."
+              />
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleUpdateQuestion} disabled={!editQuestion.questionText || !editQuestion.subject}>
+                Update Question
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Search */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex gap-4 items-center">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                placeholder="Search questions..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Questions List */}
+      <div className="space-y-4">
+        <AnimatePresence>
+          {questions.map((question, index) => (
+            <motion.div
+              key={question._id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ delay: index * 0.1 }}
+            >
+              <Card className="hover:shadow-lg transition-all duration-200">
+                <CardContent className="p-6">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <Badge variant="outline">{question.subject}</Badge>
+                        <Badge className={getDifficultyColor(question.difficulty)}>
+                          {question.difficulty}
+                        </Badge>
+                        <Badge variant="secondary">{question.type}</Badge>
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        {question.questionText}
+                      </h3>
+                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <span>Marks: {question.marks}</span>
+                        <span>Created: {new Date(question.createdAt).toLocaleDateString()}</span>
+                        {question.tags && question.tags.length > 0 && (
+                          <div className="flex gap-1">
+                            {question.tags.slice(0, 3).map(tag => (
+                              <Badge key={tag} variant="outline" className="text-xs">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => handleViewQuestion(question)}>
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleEditQuestion(question)}>
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-red-600 hover:text-red-700"
+                        onClick={() => handleDeleteQuestion(question._id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
+      {/* Show message if no questions */}
+      {!loading && questions.length === 0 && (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <h3 className="text-lg font-semibold text-foreground mb-2">No Questions Found</h3>
+            <p className="text-muted-foreground mb-4">
+              Start by adding your first question using the "Add Question" button above.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Pagination */}
+      {pagination.totalPages > 1 && (
+        <div className="flex justify-center gap-2">
+          <Button
+            variant="outline"
+            disabled={pagination.currentPage === 1}
+            onClick={() => fetchQuestions(pagination.currentPage - 1)}
+          >
+            Previous
+          </Button>
+          <span className="flex items-center px-4">
+            Page {pagination.currentPage} of {pagination.totalPages}
+          </span>
+          <Button
+            variant="outline"
+            disabled={pagination.currentPage === pagination.totalPages}
+            onClick={() => fetchQuestions(pagination.currentPage + 1)}
+          >
+            Next
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

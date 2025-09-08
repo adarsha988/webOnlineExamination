@@ -1,6 +1,5 @@
 import express from 'express';
 import Question from '../models/question.model.js';
-import SharedBank from '../models/sharedBank.model.js';
 import Activity from '../models/activity.model.js';
 import { authenticateToken } from '../middleware/auth.ts';
 import { config } from '../config/env.js';
@@ -48,15 +47,14 @@ router.get('/', authenticateToken, requireInstructor, async (req, res) => {
   try {
     const {
       scope = 'private',
-      sharedBankId,
       subject,
       difficulty,
       type,
-      tags,
+      status,
       search,
       page = 1,
-      limit = 20,
-      sort = 'updatedAt',
+      limit = 10,
+      sort = 'createdAt',
       order = 'desc'
     } = req.query;
 
@@ -65,54 +63,16 @@ router.get('/', authenticateToken, requireInstructor, async (req, res) => {
     const limitNum = parseInt(limit);
     const skip = (pageNum - 1) * limitNum;
 
-    let query = { isActive: true };
-    let populateFields = 'createdBy approvedBy suggestedBy';
-
-    // Scope-based filtering
-    if (scope === 'private') {
-      query.createdBy = userId;
-      query.scope = 'private';
-    } else if (scope === 'shared' && sharedBankId) {
-      // Check if user has access to this shared bank
-      const sharedBank = await SharedBank.findById(sharedBankId);
-      if (!sharedBank) {
-        return res.status(404).json({ message: 'Shared bank not found' });
-      }
-
-      const permissions = sharedBank.getUserPermissions(userId);
-      if (!permissions.isOwner && !permissions.isCollaborator) {
-        return res.status(403).json({ message: 'Access denied to this shared bank' });
-      }
-
-      query.sharedBankId = sharedBankId;
-      query.scope = 'shared';
-    } else if (scope === 'all') {
-      // Return both private (owned by user) and shared (accessible to user)
-      const accessibleSharedBanks = await SharedBank.find({
-        $or: [
-          { owners: userId },
-          { 'collaborators.userId': userId }
-        ],
-        isActive: true
-      }).select('_id');
-
-      query.$or = [
-        { createdBy: userId, scope: 'private' },
-        { 
-          sharedBankId: { $in: accessibleSharedBanks.map(b => b._id) },
-          scope: 'shared'
-        }
-      ];
-    }
-
-    // Apply filters
+    // Build query - only private questions
+    let query = { 
+      isActive: true,
+      createdBy: userId,
+      scope: 'private'
+    };
     if (subject) query.subject = subject;
     if (difficulty) query.difficulty = difficulty;
     if (type) query.type = type;
-    if (tags) {
-      const tagArray = Array.isArray(tags) ? tags : tags.split(',');
-      query.tags = { $in: tagArray };
-    }
+    if (status) query.status = status;
 
     let questions;
     let total;
@@ -120,8 +80,7 @@ router.get('/', authenticateToken, requireInstructor, async (req, res) => {
     // Handle search
     if (search) {
       questions = await Question.searchQuestions(search, query)
-        .populate(populateFields, 'name email')
-        .populate('sharedBankId', 'name')
+        .populate('createdBy', 'name email')
         .skip(skip)
         .limit(limitNum);
       
@@ -135,8 +94,7 @@ router.get('/', authenticateToken, requireInstructor, async (req, res) => {
       sortObj[sort] = order === 'desc' ? -1 : 1;
 
       questions = await Question.find(query)
-        .populate(populateFields, 'name email')
-        .populate('sharedBankId', 'name')
+        .populate('createdBy', 'name email')
         .sort(sortObj)
         .skip(skip)
         .limit(limitNum);
@@ -173,23 +131,15 @@ router.get('/:id', authenticateToken, requireInstructor, async (req, res) => {
     const question = await Question.findById(id)
       .populate('createdBy', 'name email')
       .populate('approvedBy', 'name email')
-      .populate('suggestedBy', 'name email')
-      .populate('sharedBankId', 'name owners collaborators');
+      .populate('suggestedBy', 'name email');
 
     if (!question || !question.isActive) {
       return res.status(404).json({ message: 'Question not found' });
     }
 
-    // Check access permissions
-    if (question.scope === 'private' && question.createdBy._id.toString() !== userId) {
+    // Only allow access to private questions owned by the user
+    if (question.scope !== 'private' || question.createdBy._id.toString() !== userId) {
       return res.status(403).json({ message: 'Access denied' });
-    }
-
-    if (question.scope === 'shared') {
-      const permissions = question.sharedBankId.getUserPermissions(userId);
-      if (!permissions.isOwner && !permissions.isCollaborator) {
-        return res.status(403).json({ message: 'Access denied' });
-      }
     }
 
     res.json(question);
@@ -205,8 +155,6 @@ router.post('/', authenticateToken, requireInstructor, async (req, res) => {
   try {
     const userId = req.user.userId;
     const {
-      scope = 'private',
-      sharedBankId,
       subject,
       difficulty,
       type,
@@ -214,8 +162,10 @@ router.post('/', authenticateToken, requireInstructor, async (req, res) => {
       options,
       correctAnswer,
       explanation,
-      marks,
-      tags
+      tags,
+      marks = 1,
+      timeLimit,
+      attachments
     } = req.body;
 
     // Validate required fields
@@ -225,71 +175,40 @@ router.post('/', authenticateToken, requireInstructor, async (req, res) => {
       });
     }
 
-    // Check shared bank permissions if creating shared question
-    let permissions = {};
-    if (scope === 'shared') {
-      if (!sharedBankId) {
-        return res.status(400).json({ message: 'sharedBankId required for shared questions' });
-      }
-
-      const sharedBank = await SharedBank.findById(sharedBankId);
-      if (!sharedBank) {
-        return res.status(404).json({ message: 'Shared bank not found' });
-      }
-
-      permissions = sharedBank.getUserPermissions(userId);
-      if (!permissions.canCreate) {
-        return res.status(403).json({ message: 'No permission to create questions in this shared bank' });
-      }
-    }
+    // Only allow creating private questions
 
     // Create question
     const questionData = {
       createdBy: userId,
-      scope,
+      scope: 'private',
       subject,
       difficulty,
       type,
       questionText,
+      options,
+      correctAnswer,
       explanation,
-      marks: marks || 1,
-      tags: tags || []
+      tags: tags || [],
+      marks,
+      timeLimit,
+      attachments: attachments || [],
+      status: 'approved', // Private questions are auto-approved
+      approvedBy: userId,
+      approvedAt: new Date()
     };
-
-    if (scope === 'shared') {
-      questionData.sharedBankId = sharedBankId;
-      // Auto-approve if user is owner, otherwise set as suggested
-      questionData.status = permissions.isOwner ? 'approved' : 'suggested';
-      if (questionData.status === 'suggested') {
-        questionData.suggestedBy = userId;
-      }
-    }
-
-    // Handle question type specific data
-    if (type === 'mcq' || type === 'truefalse') {
-      questionData.options = options;
-      questionData.correctAnswer = correctAnswer;
-    } else if (type === 'short' || type === 'long') {
-      questionData.correctAnswer = correctAnswer;
-    }
 
     const question = new Question(questionData);
     await question.save();
 
-    // Update shared bank stats
-    if (scope === 'shared') {
-      await SharedBank.findById(sharedBankId).then(bank => bank.updateStats());
-    }
 
     // Log activity
     await logActivity(
       userId,
       'question_created',
-      `Created ${scope} question: ${questionText.substring(0, 50)}...`,
+      `Created private question: ${questionText.substring(0, 50)}...`,
       {
         questionId: question._id,
-        scope,
-        sharedBankId,
+        scope: 'private',
         subject,
         type,
         ipAddress: req.ip,
@@ -298,8 +217,7 @@ router.post('/', authenticateToken, requireInstructor, async (req, res) => {
     );
 
     const populatedQuestion = await Question.findById(question._id)
-      .populate('createdBy', 'name email')
-      .populate('sharedBankId', 'name');
+      .populate('createdBy', 'name email');
 
     res.status(201).json(populatedQuestion);
 
@@ -316,19 +234,14 @@ router.put('/:id', authenticateToken, requireInstructor, async (req, res) => {
     const userId = req.user.userId;
     const userRole = req.user.role;
 
-    const question = await Question.findById(id).populate('sharedBankId');
+    const question = await Question.findById(id);
     if (!question || !question.isActive) {
       return res.status(404).json({ message: 'Question not found' });
     }
 
-    // Check edit permissions
-    let permissions = {};
-    if (question.scope === 'shared') {
-      permissions = question.sharedBankId.getUserPermissions(userId);
-    }
-
-    if (!question.canEdit(userId, userRole, permissions)) {
-      return res.status(403).json({ message: 'No permission to edit this question' });
+    // Only allow editing private questions owned by the user
+    if (question.scope !== 'private' || question.createdBy.toString() !== userId) {
+      return res.status(403).json({ message: 'Permission denied' });
     }
 
     // Update fields
@@ -361,7 +274,6 @@ router.put('/:id', authenticateToken, requireInstructor, async (req, res) => {
       {
         questionId: question._id,
         scope: question.scope,
-        sharedBankId: question.sharedBankId,
         version: question.version,
         ipAddress: req.ip,
         userAgent: req.get('User-Agent')
@@ -371,8 +283,7 @@ router.put('/:id', authenticateToken, requireInstructor, async (req, res) => {
     const updatedQuestion = await Question.findById(id)
       .populate('createdBy', 'name email')
       .populate('approvedBy', 'name email')
-      .populate('suggestedBy', 'name email')
-      .populate('sharedBankId', 'name');
+      .populate('suggestedBy', 'name email');
 
     res.json(updatedQuestion);
 
@@ -389,29 +300,20 @@ router.delete('/:id', authenticateToken, requireInstructor, async (req, res) => 
     const userId = req.user.userId;
     const userRole = req.user.role;
 
-    const question = await Question.findById(id).populate('sharedBankId');
+    const question = await Question.findById(id);
     if (!question || !question.isActive) {
       return res.status(404).json({ message: 'Question not found' });
     }
 
-    // Check delete permissions
-    let permissions = {};
-    if (question.scope === 'shared') {
-      permissions = question.sharedBankId.getUserPermissions(userId);
-    }
-
-    if (!question.canDelete(userId, userRole, permissions)) {
-      return res.status(403).json({ message: 'No permission to delete this question' });
+    // Only allow deleting private questions owned by the user
+    if (question.scope !== 'private' || question.createdBy.toString() !== userId) {
+      return res.status(403).json({ message: 'Permission denied' });
     }
 
     // Soft delete
     question.isActive = false;
+    question.deletedAt = new Date();
     await question.save();
-
-    // Update shared bank stats
-    if (question.scope === 'shared') {
-      await SharedBank.findById(question.sharedBankId).then(bank => bank.updateStats());
-    }
 
     // Log activity
     await logActivity(
@@ -421,7 +323,6 @@ router.delete('/:id', authenticateToken, requireInstructor, async (req, res) => 
       {
         questionId: question._id,
         scope: question.scope,
-        sharedBankId: question.sharedBankId,
         ipAddress: req.ip,
         userAgent: req.get('User-Agent')
       }
@@ -435,65 +336,12 @@ router.delete('/:id', authenticateToken, requireInstructor, async (req, res) => 
   }
 });
 
-// POST /api/questions/:id/approve - Approve suggested question
-router.post('/:id/approve', authenticateToken, requireInstructor, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user.userId;
-
-    const question = await Question.findById(id).populate('sharedBankId');
-    if (!question || !question.isActive) {
-      return res.status(404).json({ message: 'Question not found' });
-    }
-
-    if (question.scope !== 'shared') {
-      return res.status(400).json({ message: 'Only shared questions can be approved' });
-    }
-
-    const permissions = question.sharedBankId.getUserPermissions(userId);
-    if (!permissions.canApprove) {
-      return res.status(403).json({ message: 'No permission to approve questions' });
-    }
-
-    question.status = 'approved';
-    question.approvedBy = userId;
-    await question.save();
-
-    // Update shared bank stats
-    await SharedBank.findById(question.sharedBankId).then(bank => bank.updateStats());
-
-    // Log activity
-    await logActivity(
-      userId,
-      'question_approved',
-      `Approved question: ${question.questionText.substring(0, 50)}...`,
-      {
-        questionId: question._id,
-        sharedBankId: question.sharedBankId,
-        originalAuthor: question.createdBy,
-        ipAddress: req.ip,
-        userAgent: req.get('User-Agent')
-      }
-    );
-
-    const approvedQuestion = await Question.findById(id)
-      .populate('createdBy', 'name email')
-      .populate('approvedBy', 'name email')
-      .populate('sharedBankId', 'name');
-
-    res.json(approvedQuestion);
-
-  } catch (error) {
-    console.error('Error approving question:', error);
-    res.status(500).json({ message: 'Error approving question', error: error.message });
-  }
-});
 
 // POST /api/questions/bulk-import - Bulk import questions from CSV/Excel
 router.post('/bulk-import', authenticateToken, requireInstructor, upload.single('file'), async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { scope = 'private', sharedBankId } = req.body;
+    // Only allow private scope for imports
 
     if (!req.file) {
       return res.status(400).json({ message: 'No file uploaded' });
@@ -508,26 +356,9 @@ router.post('/bulk-import', authenticateToken, requireInstructor, upload.single(
       });
     }
 
-    // Check shared bank permissions if importing to shared bank
-    if (scope === 'shared') {
-      if (!sharedBankId) {
-        return res.status(400).json({ message: 'sharedBankId required for shared question import' });
-      }
-
-      const sharedBank = await SharedBank.findById(sharedBankId);
-      if (!sharedBank) {
-        return res.status(404).json({ message: 'Shared bank not found' });
-      }
-
-      const permissions = sharedBank.getUserPermissions(userId);
-      if (!permissions.canCreate) {
-        return res.status(403).json({ message: 'No permission to import questions to this shared bank' });
-      }
-    }
-
-    // Import questions
+    // Import questions as private only
     const fileType = fileExtension.substring(1); // Remove the dot
-    const importResult = await importQuestions(req.file.path, fileType, userId, scope, sharedBankId);
+    const importResult = await importQuestions(req.file.path, fileType, userId, 'private');
 
     // Save valid questions to database
     const savedQuestions = [];
@@ -544,11 +375,6 @@ router.post('/bulk-import', authenticateToken, requireInstructor, upload.single(
       }
     }
 
-    // Update shared bank stats if applicable
-    if (scope === 'shared' && sharedBankId) {
-      await SharedBank.findById(sharedBankId).then(bank => bank.updateStats());
-    }
-
     // Log activity
     await logActivity(
       userId,
@@ -559,8 +385,7 @@ router.post('/bulk-import', authenticateToken, requireInstructor, upload.single(
         totalRows: importResult.totalRows,
         successCount: savedQuestions.length,
         errorCount: importResult.errorDetails.length,
-        scope,
-        sharedBankId,
+        scope: 'private',
         ipAddress: req.ip,
         userAgent: req.get('User-Agent')
       }
@@ -589,102 +414,70 @@ router.get('/export', authenticateToken, requireInstructor, async (req, res) => 
     const userId = req.user.userId;
     const { 
       format = 'csv', 
-      scope = 'private', 
-      sharedBankId,
       subject,
       difficulty,
       type,
-      tags
+      tags,
+      status
     } = req.query;
 
-    if (!['csv', 'xlsx'].includes(format)) {
-      return res.status(400).json({ message: 'Format must be csv or xlsx' });
-    }
+    // Build query for private questions only
+    let query = { 
+      isActive: true,
+      createdBy: userId,
+      scope: 'private'
+    };
 
-    // Build query based on scope and filters
-    let query = { isActive: true };
-
-    if (scope === 'private') {
-      query.createdBy = userId;
-      query.scope = 'private';
-    } else if (scope === 'shared' && sharedBankId) {
-      const sharedBank = await SharedBank.findById(sharedBankId);
-      if (!sharedBank) {
-        return res.status(404).json({ message: 'Shared bank not found' });
-      }
-
-      const permissions = sharedBank.getUserPermissions(userId);
-      if (!permissions.isOwner && !permissions.isCollaborator) {
-        return res.status(403).json({ message: 'Access denied to this shared bank' });
-      }
-
-      query.sharedBankId = sharedBankId;
-      query.scope = 'shared';
-    }
-
-    // Apply filters
+    // Apply additional filters
     if (subject) query.subject = subject;
     if (difficulty) query.difficulty = difficulty;
     if (type) query.type = type;
+    if (status) query.status = status;
     if (tags) {
       const tagArray = Array.isArray(tags) ? tags : tags.split(',');
       query.tags = { $in: tagArray };
     }
 
-    // Fetch questions
     const questions = await Question.find(query)
       .populate('createdBy', 'name email')
-      .sort({ updatedAt: -1 });
+      .sort({ createdAt: -1 });
 
     if (questions.length === 0) {
-      return res.status(404).json({ message: 'No questions found matching the criteria' });
+      return res.status(404).json({ message: 'No questions found to export' });
     }
 
-    // Generate export file
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const fileName = `questions_${scope}_${timestamp}.${format}`;
-    const filePath = path.join('uploads', fileName);
+    let exportData;
+    let filename;
+    let contentType;
 
-    let exportedFile;
-    if (format === 'csv') {
-      exportedFile = await exportQuestionsToCSV(questions, filePath);
+    if (format === 'excel') {
+      exportData = await exportQuestionsToExcel(questions);
+      filename = `questions_export_${Date.now()}.xlsx`;
+      contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
     } else {
-      exportedFile = await exportQuestionsToExcel(questions, filePath);
+      exportData = await exportQuestionsToCSV(questions);
+      filename = `questions_export_${Date.now()}.csv`;
+      contentType = 'text/csv';
     }
 
     // Log activity
     await logActivity(
       userId,
-      'question_exported',
+      'questions_exported',
       `Exported ${questions.length} questions to ${format.toUpperCase()}`,
       {
-        fileName,
         questionCount: questions.length,
         format,
-        scope,
-        sharedBankId,
+        scope: 'private',
         filters: { subject, difficulty, type, tags },
         ipAddress: req.ip,
         userAgent: req.get('User-Agent')
       }
     );
 
-    // Send file
-    res.download(exportedFile, fileName, (err) => {
-      if (err) {
-        console.error('Error sending file:', err);
-      }
-      // Clean up file after sending
-      setTimeout(() => {
-        try {
-          if (require('fs').existsSync(exportedFile)) {
-            require('fs').unlinkSync(exportedFile);
-          }
-        } catch (cleanupError) {
-          console.error('Error cleaning up export file:', cleanupError);
-        }
-      }, 5000);
-    });
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(exportData);
 
   } catch (error) {
     console.error('Error exporting questions:', error);

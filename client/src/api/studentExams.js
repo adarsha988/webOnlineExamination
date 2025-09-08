@@ -24,8 +24,7 @@ export const studentExamAPI = {
 
   // Exam session management
   startExam: async (examId, studentId, sessionData = {}) => {
-    const response = await axios.post(`${API_BASE_URL}/exams/${examId}/start`, {
-      studentId,
+    const response = await axios.post(`${API_BASE_URL}/student/${studentId}/exam/${examId}/start`, {
       sessionData: {
         ipAddress: sessionData.ipAddress || 'unknown',
         userAgent: navigator.userAgent,
@@ -36,15 +35,12 @@ export const studentExamAPI = {
   },
 
   getExamSession: async (examId, studentId) => {
-    const response = await axios.get(`${API_BASE_URL}/exams/${examId}/session`, {
-      params: { studentId }
-    });
+    const response = await axios.get(`${API_BASE_URL}/student/${studentId}/exam/${examId}/session`);
     return response.data;
   },
 
   saveAnswer: async (examId, studentId, questionId, answer, timeSpent = 0) => {
-    const response = await axios.patch(`${API_BASE_URL}/exams/${examId}/answer`, {
-      studentId,
+    const response = await axios.post(`${API_BASE_URL}/student/${studentId}/exam/${examId}/answer`, {
       questionId,
       answer,
       timeSpent
@@ -53,24 +49,20 @@ export const studentExamAPI = {
   },
 
   submitExam: async (examId, studentId, finalAnswers = []) => {
-    const response = await axios.post(`${API_BASE_URL}/exams/${examId}/submit`, {
-      studentId,
+    const response = await axios.post(`${API_BASE_URL}/student/${studentId}/exam/${examId}/submit`, {
       finalAnswers
     });
     return response.data;
   },
 
   getExamResult: async (examId, studentId) => {
-    const response = await axios.get(`${API_BASE_URL}/exams/${examId}/result`, {
-      params: { studentId }
-    });
+    const response = await axios.get(`${API_BASE_URL}/student/${studentId}/exam/${examId}/result`);
     return response.data;
   },
 
   // Violation reporting
   reportViolation: async (examId, studentId, type, details = '') => {
-    const response = await axios.post(`${API_BASE_URL}/exams/${examId}/violation`, {
-      studentId,
+    const response = await axios.post(`${API_BASE_URL}/student/${studentId}/exam/${examId}/violation`, {
       type,
       details
     });

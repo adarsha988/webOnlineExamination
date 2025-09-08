@@ -79,7 +79,7 @@ const GlobalNotifications = ({ isDropdown = false, onClose }) => {
       
       const params = new URLSearchParams({
         role: user.role,
-        userId: user._id || user.id,
+        userId: user.email,
         page: 1,
         limit: isDropdown ? 10 : 50,
         unreadOnly: filter === 'unread' ? 'true' : 'false'
@@ -122,7 +122,7 @@ const GlobalNotifications = ({ isDropdown = false, onClose }) => {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ userId: user._id || user.id })
+        body: JSON.stringify({ userId: user.email })
       });
 
       if (!response.ok) {
@@ -158,7 +158,7 @@ const GlobalNotifications = ({ isDropdown = false, onClose }) => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ 
-          userId: user._id || user.id,
+          userId: user.email,
           role: user.role 
         })
       });
@@ -198,7 +198,7 @@ const GlobalNotifications = ({ isDropdown = false, onClose }) => {
         },
         body: JSON.stringify({
           ...newNotification,
-          senderId: user._id || user.id
+          senderId: user.email
         })
       });
 

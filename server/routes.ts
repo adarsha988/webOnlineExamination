@@ -6,6 +6,8 @@ import { storage } from "./storage";
 import { authenticateToken } from "./middleware/auth.js";
 import { config, validateEnv } from "./config/env.js";
 // @ts-ignore
+import User from "./models/user.model.js";
+// @ts-ignore
 import quizRoutes from "./routes/quiz.js";
 // @ts-ignore
 import testimonialRoutes from "./routes/testimonial.js";
@@ -26,13 +28,11 @@ import exportRoutes from "./routes/export.js";
 // @ts-ignore
 import examsRoutes from "./routes/exams.js";
 // @ts-ignore
+import instructorExamReviewRoutes from "./routes/instructorExamReview.js";
+// @ts-ignore
 import notificationsRoutes from "./routes/notifications.js";
 // @ts-ignore
 import questionsRoutes from "./routes/questions.js";
-// @ts-ignore
-import sharedBanksRoutes from "./routes/sharedBanks.js";
-// @ts-ignore
-import adminRoutes from "./routes/admin.js";
 // @ts-ignore
 import analyticsRoutes from "./routes/analytics.js";
 // @ts-ignore
@@ -55,6 +55,8 @@ import studentStatsRoutes from "./routes/studentStats.js";
 import attemptsRoutes from "./routes/attempts.js";
 // @ts-ignore
 import proctoringRoutes from "./routes/proctoring.js";
+// @ts-ignore
+import proctoringDashboardRoutes from "./routes/proctoringDashboard.js";
 // @ts-ignore
 import resultsRoutes from "./routes/results.js";
 // @ts-ignore
@@ -89,16 +91,16 @@ export function registerRoutes(app: Express): Server {
   app.use('/api/reports', reportsRoutes);
   app.use('/api/export', exportRoutes);
   
-  // Instructor API Routes
+  // Instructor API Routes (mount before general exams routes to take precedence)
   app.use('/api/questions', questionsRoutes);
-  app.use('/api/shared-banks', sharedBanksRoutes);
   app.use('/api/exams', instructorExamsRoutes);
+  app.use('/api', instructorExamReviewRoutes);
   
   // Student API Routes
   app.use('/api', studentExamsRoutes);
   app.use('/api', studentAnalyticsRoutes);
   app.use('/api', studentNotificationsRoutes);
-  app.use('/api/student', studentStatsRoutes);
+  app.use('/api/student-stats', studentStatsRoutes);
   
   // Instructor Stats Routes
   app.use('/api/instructor', instructorStatsRoutes);
@@ -106,6 +108,7 @@ export function registerRoutes(app: Express): Server {
   // AI Proctoring Routes
   app.use('/api/attempts', attemptsRoutes);
   app.use('/api/proctoring', proctoringRoutes);
+  app.use('/api/proctoring', proctoringDashboardRoutes);
   app.use('/api/results', resultsRoutes);
   app.use('/api/ai-proctoring', aiProctoringRoutes);
   
@@ -113,8 +116,6 @@ export function registerRoutes(app: Express): Server {
   app.use('/api/global-analytics', globalAnalyticsRoutes);
   app.use('/api/global-notifications', globalNotificationsRoutes);
   
-  // Admin API Routes
-  app.use('/api/admin', adminRoutes);
   app.use('/api/analytics', analyticsRoutes);
 
   // Authentication routes
@@ -159,7 +160,16 @@ export function registerRoutes(app: Express): Server {
     try {
       const { email, password } = req.body;
       
-      const user = await storage.getUserByEmail(email);
+      // Try MongoDB first (for users like Joe Doe)
+      let user = await User.findOne({ email });
+      let isMongoUser = !!user;
+      
+      // If not found in MongoDB, try file storage (for demo users)
+      if (!user) {
+        user = await storage.getUserByEmail(email);
+        isMongoUser = false;
+      }
+      
       if (!user) {
         return res.status(401).json({ message: 'Invalid credentials' });
       }
@@ -170,16 +180,17 @@ export function registerRoutes(app: Express): Server {
         return res.status(401).json({ message: 'Invalid credentials' });
       }
 
-      // Generate JWT token
+      // Generate JWT token with appropriate user ID
+      const userId = isMongoUser ? user._id.toString() : user.id;
       const token = jwt.sign(
-        { userId: user.id, email: user.email, role: user.role },
+        { userId, email: user.email, role: user.role },
         config.jwt.secret,
         { expiresIn: '24h' }
       );
 
       // Remove password from response
-      const { password: _, ...userWithoutPassword } = user;
-      res.json({ user: userWithoutPassword, token });
+      const { password: _, ...userWithoutPassword } = user.toObject ? user.toObject() : user;
+      res.json({ user: { ...userWithoutPassword, id: userId }, token });
     } catch (error) {
       console.error('Login error:', error);
       res.status(500).json({ message: 'Login failed' });
@@ -191,12 +202,29 @@ export function registerRoutes(app: Express): Server {
       if (!req.user) {
         return res.status(401).json({ message: 'Authentication required' });
       }
-      const user = await storage.getUser(req.user.userId);
+
+      let user = null;
+      
+      // First try to find user in MongoDB
+      try {
+        user = await User.findById(req.user.userId);
+      } catch (mongoError) {
+        console.log('MongoDB user lookup failed, trying file storage...');
+      }
+      
+      // If not found in MongoDB, try file storage
+      if (!user) {
+        user = await storage.getUser(req.user.userId);
+      }
+      
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }
       
-      const { password: _, ...userWithoutPassword } = user;
+      // Handle both MongoDB and file storage user objects
+      const userResponse = user.toObject ? user.toObject() : user;
+      const { password: _, ...userWithoutPassword } = userResponse;
+      
       res.json(userWithoutPassword);
     } catch (error) {
       console.error('Get user error:', error);

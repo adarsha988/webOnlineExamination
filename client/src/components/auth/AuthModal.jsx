@@ -111,12 +111,14 @@ const AuthModal = ({ isOpen, onClose, mode, onModeChange }) => {
                 {mode === 'login' ? 'Welcome Back' : 'Create Account'}
               </h2>
             </div>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <X className="h-5 w-5 text-gray-500" />
-            </button>
+            {onClose && onClose.toString() !== '() => {}' && (
+              <button
+                onClick={onClose}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="h-5 w-5 text-gray-500" />
+              </button>
+            )}
           </div>
 
           {/* Form */}
@@ -232,9 +234,9 @@ const AuthModal = ({ isOpen, onClose, mode, onModeChange }) => {
             <div className="mt-6 p-4 bg-gray-50 rounded-lg">
               <h4 className="text-sm font-medium text-gray-900 mb-2">Demo Accounts:</h4>
               <div className="text-xs text-gray-600 space-y-1">
-                <div>Admin: admin@example.com / admin123</div>
-                <div>Instructor: inst@example.com / inst123</div>
-                <div>Student: stu1@example.com / stu123</div>
+                <div>Admin: alice@admin.com / password123</div>
+                <div>Instructor: john@university.edu / password123</div>
+                <div>Student: bob@student.edu / password123</div>
               </div>
             </div>
           </div>

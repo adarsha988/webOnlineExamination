@@ -7,6 +7,41 @@ import StudentExam from '../models/studentExam.model.js';
 
 const router = express.Router();
 
+// Helper function to find user by email or ID
+const findUserByIdentifier = async (identifier) => {
+  try {
+    // First try to find by email
+    let user = await User.findOne({ email: identifier });
+    if (user) return user;
+    
+    // If not found and identifier looks like ObjectId, try by _id
+    if (mongoose.Types.ObjectId.isValid(identifier)) {
+      user = await User.findById(identifier);
+      if (user) return user;
+    }
+    
+    // If not found and identifier looks like UUID, try by profile.userId or any UUID field
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(identifier)) {
+      // Try to find by various possible UUID fields
+      user = await User.findOne({
+        $or: [
+          { 'profile.userId': identifier },
+          { 'profile.uuid': identifier },
+          { 'uuid': identifier },
+          { 'userId': identifier }
+        ]
+      });
+      if (user) return user;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error finding user:', error);
+    return null;
+  }
+};
+
 // Get notifications for a user (role-aware)
 router.get('/', async (req, res) => {
   try {
@@ -17,17 +52,29 @@ router.get('/', async (req, res) => {
     let query = {};
     
     if (role && userId) {
+      // Find user by identifier (email, ObjectId, or UUID)
+      const user = await findUserByIdentifier(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
       // Specific user notifications + role-based broadcasts
       query = {
         $or: [
-          { recipientId: new mongoose.Types.ObjectId(userId) },
+          { recipientId: user._id },
           { roleTarget: role },
           { roleTarget: 'all' }
         ]
       };
     } else if (userId) {
+      // Find user by identifier (email, ObjectId, or UUID)
+      const user = await findUserByIdentifier(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      
       // Just user-specific notifications
-      query.recipientId = new mongoose.Types.ObjectId(userId);
+      query.recipientId = user._id;
     }
 
     if (unreadOnly === 'true') {

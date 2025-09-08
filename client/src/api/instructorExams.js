@@ -98,35 +98,22 @@ export const instructorExamAPI = {
   // Get instructor dashboard stats
   getDashboardStats: async (instructorId) => {
     try {
-      // This will aggregate data from multiple API calls
-      const [recentExamsResponse, allExamsResponse] = await Promise.all([
-        api.get(`/exams/instructor/${instructorId}/recent?limit=10`),
-        api.get(`/exams/instructor/${instructorId}?limit=100`) // Get more for stats calculation
-      ]);
-
-      const recentExams = recentExamsResponse.data.exams || [];
-      const allExams = allExamsResponse.data.exams || [];
-
-      // Calculate stats
-      const totalExams = allExams.length;
-      const totalAttempts = allExams.reduce((sum, exam) => sum + (exam.attemptsCount || 0), 0);
-      const avgScore = allExams.length > 0 
-        ? Math.round(allExams.reduce((sum, exam) => sum + (exam.averageScore || 0), 0) / allExams.length)
-        : 0;
-      const pendingGrades = allExams.filter(exam => exam.status === 'completed').length;
-
-      return {
-        success: true,
-        stats: {
-          totalExams,
-          totalAttempts,
-          avgScore,
-          pendingGrades
-        },
-        recentExams
-      };
+      // Use the new analytics endpoint for accurate statistics
+      const response = await api.get(`/exams/instructor/${instructorId}/analytics`);
+      return response.data;
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
+      throw error.response?.data || error;
+    }
+  },
+
+  // Get instructor analytics (comprehensive)
+  getAnalytics: async (instructorId) => {
+    try {
+      const response = await api.get(`/exams/instructor/${instructorId}/analytics`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching instructor analytics:', error);
       throw error.response?.data || error;
     }
   }

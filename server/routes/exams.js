@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 const router = express.Router();
 import Exam from '../models/exam.model.js';
 import Question from '../models/question.model.js';
@@ -150,7 +151,7 @@ router.get('/instructor/:instructorId', authenticateToken, async (req, res) => {
     const { page = 1, limit = 10, status, search } = req.query;
     
     const matchStage = { 
-      instructorId: instructorId,
+      instructorId: new mongoose.Types.ObjectId(instructorId),
       status: { $ne: 'inactive' } // Exclude soft-deleted exams
     };
 
@@ -217,20 +218,28 @@ router.get('/:id', authenticateToken, async (req, res) => {
 // POST /api/exams - Create new exam
 router.post('/', authenticateToken, authorizeRole(['admin', 'instructor']), async (req, res) => {
   try {
+    // Handle both userId and id fields for compatibility
+    const userId = req.user.userId || req.user.id || req.user._id;
+    
+    if (!userId) {
+      return res.status(401).json({ message: 'User ID not found in token' });
+    }
+    
     const examData = {
       ...req.body,
-      instructorId: req.user.id,
-      createdBy: req.user.id
+      instructorId: userId,
+      createdBy: userId,
+      status: req.body.status || 'draft'
     };
     
     const exam = new Exam(examData);
     await exam.save();
     
-    // Log activity
+    // Log activity with correct schema
     await Activity.create({
-      userId: req.user.id,
-      action: 'exam_created',
-      details: `Created exam: ${exam.title}`,
+      user: userId,
+      type: 'exam_created',
+      description: `Created exam: ${exam.title}`,
       metadata: { examId: exam._id }
     });
     
@@ -250,7 +259,7 @@ router.put('/:id', authenticateToken, authorizeRole(['admin', 'instructor']), as
     }
     
     // Check if user owns this exam
-    if (existingExam.instructorId.toString() !== req.user.id && req.user.role !== 'admin') {
+    if (existingExam.instructorId.toString() !== req.user.userId && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Access denied. You can only edit your own exams.' });
     }
     
@@ -263,9 +272,9 @@ router.put('/:id', authenticateToken, authorizeRole(['admin', 'instructor']), as
     
     // Log activity
     await Activity.create({
-      userId: req.user.id,
-      action: 'exam_updated',
-      details: `Updated exam: ${exam.title}`,
+      user: req.user.userId || req.user.id || req.user._id,
+      type: 'exam_updated',
+      description: `Updated exam: ${exam.title}`,
       metadata: { examId: exam._id }
     });
     
@@ -285,7 +294,7 @@ router.delete('/:id', authenticateToken, authorizeRole(['admin', 'instructor']),
     }
     
     // Check if user owns this exam
-    if (exam.instructorId.toString() !== req.user.id && req.user.role !== 'admin') {
+    if (exam.instructorId.toString() !== req.user.userId && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Access denied. You can only delete your own exams.' });
     }
     
@@ -300,9 +309,9 @@ router.delete('/:id', authenticateToken, authorizeRole(['admin', 'instructor']),
     
     // Log activity
     await Activity.create({
-      userId: req.user.id,
-      action: 'exam_deleted',
-      details: `Deleted exam: ${exam.title}`,
+      user: req.user.userId || req.user.id || req.user._id,
+      type: 'exam_deleted',
+      description: `Deleted exam: ${exam.title}`,
       metadata: { examId: exam._id }
     });
     
@@ -322,7 +331,7 @@ router.patch('/:id/publish', authenticateToken, authorizeRole(['admin', 'instruc
     }
     
     // Check if user owns this exam
-    if (exam.instructorId.toString() !== req.user.id && req.user.role !== 'admin') {
+    if (exam.instructorId.toString() !== req.user.userId && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Access denied. You can only publish your own exams.' });
     }
     
@@ -355,9 +364,9 @@ router.patch('/:id/publish', authenticateToken, authorizeRole(['admin', 'instruc
     
     // Log activity
     await Activity.create({
-      userId: req.user.id,
-      action: 'exam_published',
-      details: `Published exam: ${exam.title}`,
+      user: req.user.userId || req.user.id || req.user._id,
+      type: 'exam_published',
+      description: `Published exam: ${exam.title}`,
       metadata: { examId: exam._id }
     });
     

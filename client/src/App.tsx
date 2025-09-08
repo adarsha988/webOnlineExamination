@@ -46,8 +46,6 @@ import SystemAnalyticsPage from "@/components/admin/SystemAnalyticsPage.jsx";
 // @ts-ignore
 import ExamsPage from "@/components/admin/ExamsPage.jsx";
 // @ts-ignore
-import QuestionReview from "@/pages/admin/QuestionReview.jsx";
-// @ts-ignore
 import InstructorAnalytics from "@/pages/instructor/Analytics.jsx";
 // @ts-ignore
 import AdminAnalytics from "@/pages/admin/AdminAnalytics.jsx";
@@ -57,6 +55,12 @@ import GlobalAnalytics from "@/pages/GlobalAnalytics.jsx";
 import GlobalNotifications from "@/components/GlobalNotifications.jsx";
 // @ts-ignore
 import CompletedExams from "@/pages/student/CompletedExams.jsx";
+// @ts-ignore
+import Login from "@/pages/auth/Login.jsx";
+// @ts-ignore
+import Register from "@/pages/auth/Register.jsx";
+// @ts-ignore
+import TestAPI from "@/pages/TestAPI.jsx";
 
 function Router() {
   return (
@@ -166,11 +170,6 @@ function Router() {
           <ExamsPage />
         </ProtectedRoute>
       )} />
-      <Route path="/admin/question-review" component={() => (
-        <ProtectedRoute allowedRoles={['admin']}>
-          <QuestionReview />
-        </ProtectedRoute>
-      )} />
       <Route path="/admin/system-analytics" component={() => (
         <ProtectedRoute allowedRoles={['admin']}>
           <AdminAnalytics />
@@ -186,6 +185,17 @@ function Router() {
       <Route path="/notifications" component={() => (
         <ProtectedRoute allowedRoles={['admin', 'instructor', 'student']}>
           <GlobalNotifications />
+        </ProtectedRoute>
+      )} />
+      
+      {/* Auth Routes */}
+      <Route path="/login" component={Login} />
+      <Route path="/register" component={Register} />
+      
+      {/* Test Route */}
+      <Route path="/test-api" component={() => (
+        <ProtectedRoute allowedRoles={['instructor', 'admin']}>
+          <TestAPI />
         </ProtectedRoute>
       )} />
       

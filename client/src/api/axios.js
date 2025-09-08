@@ -3,12 +3,24 @@ export const getAuthToken = () => {
   return localStorage.getItem('token');
 };
 
-// Handle auth errors
-export const handleAuthError = (error) => {
-  if (error.message.includes('401')) {
-    // Token is invalid or expired
+// Handle auth errors with popup notifications
+export const handleAuthError = (error, showPopup = true) => {
+  console.log('🚨 GLOBAL AUTH ERROR:', error);
+  
+  if (error.message.includes('401') || error.message.includes('403')) {
+    // Clear authentication data
     localStorage.removeItem('token');
-    window.location.href = '/login';
+    localStorage.removeItem('user');
+    localStorage.removeItem('authState');
+    
+    if (showPopup && window.showAuthErrorToast) {
+      window.showAuthErrorToast(error);
+    }
+    
+    // Redirect to login
+    setTimeout(() => {
+      window.location.href = '/login';
+    }, 1000);
   }
   throw error;
 };

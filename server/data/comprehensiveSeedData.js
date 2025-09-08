@@ -7,7 +7,6 @@ import Question from '../models/question.model.js';
 import StudentExam from '../models/studentExam.model.js';
 import Notification from '../models/notification.model.js';
 import Activity from '../models/activity.model.js';
-import SharedBank from '../models/sharedBank.model.js';
 
 export async function seedComprehensiveData() {
   try {
@@ -22,7 +21,6 @@ export async function seedComprehensiveData() {
       StudentExam.deleteMany({}),
       Notification.deleteMany({}),
       Activity.deleteMany({}),
-      SharedBank.deleteMany({})
     ]);
 
     console.log('🗑️ Cleared existing data');
@@ -131,6 +129,19 @@ export async function seedComprehensiveData() {
     // Create Students
     const students = await User.insertMany([
       {
+        name: 'John Doe',
+        email: 'stu1@example.com',
+        password: defaultPassword,
+        role: 'student',
+        status: 'active',
+        profile: {
+          phone: '+1-555-1000',
+          studentId: 'STU2021000',
+          semester: 6,
+          gpa: 3.4
+        }
+      },
+      {
         name: 'Bob',
         email: 'bob@student.edu',
         password: defaultPassword,
@@ -218,7 +229,7 @@ export async function seedComprehensiveData() {
       students: [students[3]._id]
     });
 
-    // 4. Create Questions (20 total: 10 shared, 10 instructor-owned)
+    // 4. Create Questions (20 total: all private instructor-owned)
     const questions = await Question.insertMany([
       // Shared Questions (10)
       {
@@ -229,7 +240,7 @@ export async function seedComprehensiveData() {
         marks: 2,
         difficulty: 'easy',
         subject: 'Mathematics',
-        scope: 'shared',
+        scope: 'private',
         createdBy: instructors[0]._id,
         tags: ['arithmetic', 'multiplication']
       },
@@ -241,7 +252,7 @@ export async function seedComprehensiveData() {
         marks: 2,
         difficulty: 'easy',
         subject: 'Computer Science',
-        scope: 'shared',
+        scope: 'private',
         createdBy: instructors[1]._id,
         tags: ['data-structures', 'queue']
       },
@@ -253,7 +264,7 @@ export async function seedComprehensiveData() {
         marks: 1,
         difficulty: 'easy',
         subject: 'Mathematics',
-        scope: 'shared',
+        scope: 'private',
         createdBy: instructors[0]._id,
         tags: ['arithmetic', 'addition']
       },
@@ -265,7 +276,7 @@ export async function seedComprehensiveData() {
         marks: 2,
         difficulty: 'easy',
         subject: 'Computer Science',
-        scope: 'shared',
+        scope: 'private',
         createdBy: instructors[1]._id,
         tags: ['web', 'html']
       },
@@ -277,7 +288,7 @@ export async function seedComprehensiveData() {
         marks: 2,
         difficulty: 'easy',
         subject: 'Mathematics',
-        scope: 'shared',
+        scope: 'private',
         createdBy: instructors[0]._id,
         tags: ['algebra', 'square-root']
       },
@@ -289,7 +300,7 @@ export async function seedComprehensiveData() {
         marks: 2,
         difficulty: 'easy',
         subject: 'Computer Science',
-        scope: 'shared',
+        scope: 'private',
         createdBy: instructors[1]._id,
         tags: ['programming', 'web']
       },
@@ -301,7 +312,7 @@ export async function seedComprehensiveData() {
         marks: 2,
         difficulty: 'easy',
         subject: 'Mathematics',
-        scope: 'shared',
+        scope: 'private',
         createdBy: instructors[0]._id,
         tags: ['arithmetic', 'multiplication']
       },
@@ -313,7 +324,7 @@ export async function seedComprehensiveData() {
         marks: 2,
         difficulty: 'easy',
         subject: 'Computer Science',
-        scope: 'shared',
+        scope: 'private',
         createdBy: instructors[1]._id,
         tags: ['web', 'css']
       },
@@ -325,7 +336,7 @@ export async function seedComprehensiveData() {
         marks: 2,
         difficulty: 'easy',
         subject: 'Mathematics',
-        scope: 'shared',
+        scope: 'private',
         createdBy: instructors[0]._id,
         tags: ['arithmetic', 'division']
       },
@@ -337,7 +348,7 @@ export async function seedComprehensiveData() {
         marks: 2,
         difficulty: 'easy',
         subject: 'Computer Science',
-        scope: 'shared',
+        scope: 'private',
         createdBy: instructors[1]._id,
         tags: ['programming', 'loops']
       },
@@ -467,45 +478,11 @@ export async function seedComprehensiveData() {
 
     console.log('❓ Created questions');
 
-    // 5. Create Shared Banks
-    const sharedBanks = await SharedBank.insertMany([
-      {
-        name: 'Computer Science Fundamentals',
-        description: 'Basic CS concepts and data structures',
-        subject: 'Computer Science',
-        owners: [instructors[0]._id],
-        collaborators: [],
-        questions: questions.filter(q => q.subject === 'Data Structures' && q.scope === 'shared').map(q => q._id),
-        isPublic: true,
-        settings: {
-          allowContributions: true,
-          requireApproval: true,
-          allowDownload: true
-        }
-      },
-      {
-        name: 'Mathematics Core',
-        description: 'Essential mathematics questions',
-        subject: 'Mathematics',
-        owners: [instructors[1]._id],
-        collaborators: [],
-        questions: questions.filter(q => q.subject === 'Linear Algebra' && q.scope === 'shared').map(q => q._id),
-        isPublic: true,
-        settings: {
-          allowContributions: true,
-          requireApproval: false,
-          allowDownload: true
-        }
-      }
-    ]);
-
-    console.log('🏦 Created shared banks');
-
     // 6. Create Exams (4 specific exams as requested)
     const currentDate = new Date();
-    const futureDate = new Date(currentDate.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
-    const pastDate = new Date(currentDate.getTime() - 7 * 24 * 60 * 60 * 1000); // 7 days ago
-    const ongoingDate = new Date(currentDate.getTime() - 2 * 60 * 60 * 1000); // 2 hours ago (ongoing)
+    const futureDate = new Date(currentDate.getTime() + 14 * 24 * 60 * 60 * 1000); // 14 days from now
+    const pastDate = new Date(currentDate.getTime() - 14 * 24 * 60 * 60 * 1000); // 14 days ago
+    const ongoingDate = new Date(currentDate.getTime() - 4 * 60 * 60 * 1000); // 4 hours ago (ongoing)
 
     const exams = await Exam.insertMany([
       // Exam 1 (Completed): "Algebra Basics Test" (Math, Dr. John)
@@ -516,7 +493,7 @@ export async function seedComprehensiveData() {
         duration: 90,
         totalMarks: 100,
         passingMarks: 60,
-        questions: questions.filter(q => q.subject === 'Mathematics' && q.scope === 'shared').slice(0, 5).map(q => q._id),
+        questions: questions.filter(q => q.subject === 'Mathematics').slice(0, 5).map(q => q._id),
         createdBy: admin._id,
         instructorId: instructors[0]._id, // Dr. John
         status: 'published',
@@ -542,7 +519,7 @@ export async function seedComprehensiveData() {
         duration: 120,
         totalMarks: 100,
         passingMarks: 60,
-        questions: questions.filter(q => q.subject === 'Computer Science' && q.scope === 'shared').slice(0, 5).map(q => q._id),
+        questions: questions.filter(q => q.subject === 'Computer Science').slice(0, 5).map(q => q._id),
         createdBy: admin._id,
         instructorId: instructors[1]._id, // Dr. Sarah
         status: 'published',
@@ -619,11 +596,30 @@ export async function seedComprehensiveData() {
     // 7. Create Student Exam Records with exact scores as specified
     const studentExams = await StudentExam.insertMany([
       // Exam 1 (Algebra Basics) - Completed scores
+      // John Doe (stu1@example.com): 85/100
+      {
+        examId: exams[0]._id,
+        studentId: students[0]._id, // John Doe (stu1@example.com)
+        answers: questions.filter(q => q.subject === 'Mathematics').slice(0, 5).map((q, i) => ({
+          questionId: q._id,
+          answer: q.correctAnswer,
+          isCorrect: i < 4, // 4 out of 5 correct = 80%, but give 85%
+          marksObtained: i < 4 ? q.marks : (i === 4 ? 1 : 0), // partial credit on last question
+          timeSpent: 35 + i * 6
+        })),
+        status: 'submitted',
+        score: 85,
+        percentage: 85,
+        grade: 'A-',
+        startedAt: new Date(pastDate.getTime() + 20 * 60 * 1000),
+        submittedAt: new Date(pastDate.getTime() + 80 * 60 * 1000),
+        gradedAt: new Date(pastDate.getTime() + 100 * 60 * 1000)
+      },
       // Bob: 80/100
       {
         examId: exams[0]._id,
-        studentId: students[0]._id, // Bob
-        answers: questions.filter(q => q.subject === 'Mathematics' && q.scope === 'shared').slice(0, 5).map((q, i) => ({
+        studentId: students[1]._id, // Bob
+        answers: questions.filter(q => q.subject === 'Mathematics').slice(0, 5).map((q, i) => ({
           questionId: q._id,
           answer: q.correctAnswer,
           isCorrect: i < 4, // 4 out of 5 correct = 80%
@@ -642,7 +638,7 @@ export async function seedComprehensiveData() {
       {
         examId: exams[0]._id,
         studentId: students[1]._id, // Emma
-        answers: questions.filter(q => q.subject === 'Mathematics' && q.scope === 'shared').slice(0, 5).map((q, i) => ({
+        answers: questions.filter(q => q.subject === 'Mathematics').slice(0, 5).map((q, i) => ({
           questionId: q._id,
           answer: i < 3 ? q.correctAnswer : 'wrong answer',
           isCorrect: i < 3, // 3 out of 5 correct = 60%, but give 65%
@@ -661,7 +657,7 @@ export async function seedComprehensiveData() {
       {
         examId: exams[0]._id,
         studentId: students[2]._id, // Liam
-        answers: questions.filter(q => q.subject === 'Mathematics' && q.scope === 'shared').slice(0, 5).map((q, i) => ({
+        answers: questions.filter(q => q.subject === 'Mathematics').slice(0, 5).map((q, i) => ({
           questionId: q._id,
           answer: q.correctAnswer,
           isCorrect: i < 5, // All correct but lose 10% somewhere
@@ -680,7 +676,7 @@ export async function seedComprehensiveData() {
       {
         examId: exams[0]._id,
         studentId: students[3]._id, // Sophia
-        answers: questions.filter(q => q.subject === 'Mathematics' && q.scope === 'shared').slice(0, 5).map((q, i) => ({
+        answers: questions.filter(q => q.subject === 'Mathematics').slice(0, 5).map((q, i) => ({
           questionId: q._id,
           answer: i < 2 ? q.correctAnswer : 'wrong answer',
           isCorrect: i < 2, // 2 out of 5 correct = 40%, but give 50%
@@ -699,7 +695,7 @@ export async function seedComprehensiveData() {
       {
         examId: exams[0]._id,
         studentId: students[4]._id, // Noah
-        answers: questions.filter(q => q.subject === 'Mathematics' && q.scope === 'shared').slice(0, 5).map((q, i) => ({
+        answers: questions.filter(q => q.subject === 'Mathematics').slice(0, 5).map((q, i) => ({
           questionId: q._id,
           answer: i < 3 ? q.correctAnswer : 'wrong answer',
           isCorrect: i < 3, // 3 out of 5 correct
@@ -715,12 +711,47 @@ export async function seedComprehensiveData() {
         gradedAt: new Date(pastDate.getTime() + 115 * 60 * 1000)
       },
 
-      // Exam 2 (Programming) - Completed scores
+      // Add John Doe to Exam 2 (Intro to Programming) - Completed score: 78/100
+      {
+        examId: exams[1]._id,
+        studentId: students[0]._id, // John Doe (stu1@example.com)
+        answers: questions.filter(q => q.subject === 'Computer Science').slice(0, 5).map((q, i) => ({
+          questionId: q._id,
+          answer: i < 4 ? q.correctAnswer : 'wrong answer',
+          isCorrect: i < 4, // 4 out of 5 correct = 80%, but give 78%
+          marksObtained: i < 3 ? q.marks : (i === 3 ? q.marks - 1 : 0), // lose 1 mark on 4th, miss 5th
+          timeSpent: 28 + i * 8
+        })),
+        status: 'submitted',
+        score: 78,
+        percentage: 78,
+        grade: 'B+',
+        startedAt: new Date(pastDate.getTime() + 25 * 60 * 1000),
+        submittedAt: new Date(pastDate.getTime() + 95 * 60 * 1000),
+        gradedAt: new Date(pastDate.getTime() + 120 * 60 * 1000)
+      },
+
+      // Add John Doe to Exam 3 (Geometry Quiz) - Ongoing exam (in progress)
+      {
+        examId: exams[2]._id,
+        studentId: students[0]._id, // John Doe (stu1@example.com)
+        answers: [], // No answers yet, exam in progress
+        status: 'in_progress',
+        score: null,
+        percentage: null,
+        grade: null,
+        startedAt: new Date(ongoingDate.getTime() + 30 * 60 * 1000),
+        submittedAt: null,
+        gradedAt: null,
+        timeRemaining: 25 * 60 // 25 minutes remaining
+      },
+
+      // Exam 2 (Intro to Programming) - Completed scores
       // Bob: 75/100
       {
         examId: exams[1]._id,
-        studentId: students[0]._id, // Bob
-        answers: questions.filter(q => q.subject === 'Computer Science' && q.scope === 'shared').slice(0, 5).map((q, i) => ({
+        studentId: students[1]._id, // Bob
+        answers: questions.filter(q => q.subject === 'Computer Science').slice(0, 5).map((q, i) => ({
           questionId: q._id,
           answer: i < 4 ? q.correctAnswer : 'wrong answer',
           isCorrect: i < 4, // 4 out of 5 correct but 75%
@@ -739,7 +770,7 @@ export async function seedComprehensiveData() {
       {
         examId: exams[1]._id,
         studentId: students[1]._id, // Emma
-        answers: questions.filter(q => q.subject === 'Computer Science' && q.scope === 'shared').slice(0, 5).map((q, i) => ({
+        answers: questions.filter(q => q.subject === 'Computer Science').slice(0, 5).map((q, i) => ({
           questionId: q._id,
           answer: q.correctAnswer,
           isCorrect: i < 5, // All correct but lose some points
@@ -758,7 +789,7 @@ export async function seedComprehensiveData() {
       {
         examId: exams[1]._id,
         studentId: students[2]._id, // Liam
-        answers: questions.filter(q => q.subject === 'Computer Science' && q.scope === 'shared').slice(0, 5).map((q, i) => ({
+        answers: questions.filter(q => q.subject === 'Computer Science').slice(0, 5).map((q, i) => ({
           questionId: q._id,
           answer: i < 3 ? q.correctAnswer : 'wrong answer',
           isCorrect: i < 3, // 3 out of 5 correct = 60%
@@ -777,7 +808,7 @@ export async function seedComprehensiveData() {
       {
         examId: exams[1]._id,
         studentId: students[3]._id, // Sophia
-        answers: questions.filter(q => q.subject === 'Computer Science' && q.scope === 'shared').slice(0, 5).map((q, i) => ({
+        answers: questions.filter(q => q.subject === 'Computer Science').slice(0, 5).map((q, i) => ({
           questionId: q._id,
           answer: q.correctAnswer,
           isCorrect: true, // All correct, lose only 5%
@@ -796,7 +827,7 @@ export async function seedComprehensiveData() {
       {
         examId: exams[1]._id,
         studentId: students[4]._id, // Noah
-        answers: questions.filter(q => q.subject === 'Computer Science' && q.scope === 'shared').slice(0, 5).map((q, i) => ({
+        answers: questions.filter(q => q.subject === 'Computer Science').slice(0, 5).map((q, i) => ({
           questionId: q._id,
           answer: i < 3 ? q.correctAnswer : 'wrong answer',
           isCorrect: i < 3, // 3 out of 5 but lower score
@@ -968,7 +999,6 @@ export async function seedComprehensiveData() {
 - 👥 Users: ${1 + instructors.length + students.length} (1 admin, ${instructors.length} instructors, ${students.length} students)
 - 🏢 Departments: ${departments.length}
 - ❓ Questions: ${questions.length}
-- 🏦 Shared Banks: ${sharedBanks.length}
 - 📝 Exams: ${exams.length}
 - 📊 Student Exam Records: ${studentExams.length}
 - 🔔 Notifications: ${notifications.length}
@@ -979,7 +1009,6 @@ export async function seedComprehensiveData() {
       users: { admin, instructors, students },
       departments,
       questions,
-      sharedBanks,
       exams,
       studentExams,
       notifications,

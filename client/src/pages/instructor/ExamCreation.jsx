@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from '@/components/ui/use-toast';
 import { 
   Plus, 
   Search, 
@@ -25,6 +27,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
 const ExamCreation = () => {
+  const [, setLocation] = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
   const [examData, setExamData] = useState({
     title: '',
@@ -32,6 +35,7 @@ const ExamCreation = () => {
     subject: '',
     duration: 60,
     totalMarks: 0,
+    passingMarks: 0,
     scheduleDate: '',
     status: 'draft'
   });
@@ -73,30 +77,20 @@ const ExamCreation = () => {
       });
       const privateData = await privateResponse.json();
       
-      // Fetch shared banks
-      const sharedResponse = await fetch('/api/shared-banks', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const sharedData = await sharedResponse.json();
-
-      const banks = [
+      // Only use private questions
+      const allBanks = [
         {
-          _id: 'private',
-          name: 'My Questions',
+          id: 'private',
+          name: 'My Private Questions',
           type: 'private',
           questionCount: privateData.pagination?.totalItems || 0,
           description: 'Your private question collection'
-        },
-        ...sharedData.sharedBanks.map(bank => ({
-          ...bank,
-          type: 'shared',
-          questionCount: bank.stats.totalQuestions
-        }))
+        }
       ];
 
-      setQuestionBanks(banks);
-      if (banks.length > 0) {
-        setSelectedBank(banks[0]);
+      setQuestionBanks(allBanks);
+      if (allBanks.length > 0) {
+        setSelectedBank(allBanks[0]);
       }
     } catch (error) {
       console.error('Error fetching question banks:', error);
@@ -109,8 +103,7 @@ const ExamCreation = () => {
     try {
       const token = localStorage.getItem('token');
       const params = new URLSearchParams({
-        scope: selectedBank.type === 'private' ? 'private' : 'shared',
-        ...(selectedBank.type === 'shared' && { sharedBankId: selectedBank._id }),
+        scope: 'private',
         ...(searchTerm && { search: searchTerm }),
         ...Object.fromEntries(Object.entries(filters).filter(([_, v]) => v)),
         limit: '50'
@@ -170,12 +163,14 @@ const ExamCreation = () => {
     setSelectedQuestions(items);
   };
 
-  const createExam = async () => {
+  const createExam = async (isDraft = false) => {
     try {
       const token = localStorage.getItem('token');
       const examPayload = {
         ...examData,
-        questionIds: selectedQuestions.map(q => q._id),
+        status: isDraft ? 'draft' : 'published',
+        questions: selectedQuestions.map(q => q._id),
+        passingMarks: Math.floor(examData.totalMarks * 0.4), // 40% passing marks
         questionMarks: selectedQuestions.reduce((acc, q) => {
           acc[q._id] = q.examMarks;
           return acc;
@@ -194,12 +189,37 @@ const ExamCreation = () => {
       if (response.ok) {
         const exam = await response.json();
         console.log('Exam created successfully:', exam);
-        // Navigate to exams list or show success message
+        
+        // Show success message and redirect after a brief delay
+        const message = isDraft ? 
+          `Exam "${exam.title}" saved as draft!` : 
+          `Exam "${exam.title}" created successfully!`;
+        
+        toast({
+          title: "Success!",
+          description: message,
+        });
+        
+        // Redirect to instructor dashboard or exams list
+        setTimeout(() => {
+          setLocation('/instructor/dashboard');
+        }, 2000);
       } else {
-        console.error('Failed to create exam');
+        const errorData = await response.json();
+        console.error('Failed to create exam:', errorData);
+        toast({
+          title: "Error",
+          description: `Failed to create exam: ${errorData.message || 'Unknown error'}`,
+          variant: "destructive",
+        });
       }
     } catch (error) {
       console.error('Error creating exam:', error);
+      toast({
+        title: "Error",
+        description: "An error occurred while creating the exam. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -264,7 +284,7 @@ const ExamCreation = () => {
                     type="number"
                     placeholder="60"
                     value={examData.duration}
-                    onChange={(e) => handleExamDataChange('duration', parseInt(e.target.value))}
+                    onChange={(e) => handleExamDataChange('duration', parseInt(e.target.value) || 0)}
                   />
                 </div>
                 <div className="space-y-2">
@@ -493,7 +513,7 @@ const ExamCreation = () => {
                           return acc;
                         }, {})
                       ).map(([type, count]) => (
-                        <div key={type}>
+                        <div key={`type-${type}`}>
                           <strong>{type.toUpperCase()}:</strong> {count} questions
                         </div>
                       ))}
@@ -525,7 +545,7 @@ const ExamCreation = () => {
                     {question.options && (
                       <div className="ml-4 space-y-1">
                         {question.options.map((option, idx) => (
-                          <div key={idx} className="text-sm text-gray-600">
+                          <div key={`${question._id}-option-${idx}`} className="text-sm text-gray-600">
                             {String.fromCharCode(65 + idx)}. {option}
                           </div>
                         ))}
@@ -625,10 +645,13 @@ const ExamCreation = () => {
             </Button>
           ) : (
             <>
-              <Button variant="outline" onClick={() => setExamData(prev => ({ ...prev, status: 'draft' }))}>
+              <Button variant="outline" onClick={() => setLocation('/instructor/dashboard')}>
+                Cancel
+              </Button>
+              <Button variant="outline" onClick={() => createExam(true)}>
                 Save as Draft
               </Button>
-              <Button onClick={createExam} className="flex items-center gap-2">
+              <Button onClick={() => createExam(false)} className="flex items-center gap-2">
                 <Check className="w-4 h-4" />
                 Create Exam
               </Button>

@@ -47,7 +47,7 @@ const CompletedExams = () => {
   const fetchCompletedExams = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/student/${user._id || user.id}/exams?status=completed`, {
+      const response = await fetch(`/api/student/${user.email}/exams?status=completed`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'Content-Type': 'application/json'

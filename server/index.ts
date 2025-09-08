@@ -1,9 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
-// @ts-ignore
-import NotificationService from "./services/notificationService.js";
 import { setupVite, serveStatic, log } from "./vite";
 import { config } from "./config/env.js";
+import { registerRoutes } from "./routes.js";
 // @ts-ignore
 import connectDB from "./config/database.js";
 // @ts-ignore
@@ -106,11 +104,6 @@ app.use((req, res, next) => {
     log(`serving on port ${port}`);
     // Connect to MongoDB
     await connectDB();
-    // Seed student dashboard data (checks if data exists first)
-    await seedStudentDashboard();
-    // Seed comprehensive data for full integration
-    await seedComprehensiveData();
-    // Seed notifications
-    await NotificationService.seedNotifications();
+    log(`MongoDB connected successfully`);
   });
 })();

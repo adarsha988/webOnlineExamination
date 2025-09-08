@@ -61,15 +61,19 @@ const LogoutModal = ({ isOpen, onClose }) => {
         className: "border-green-200 bg-green-50 text-green-800",
       });
       
-      console.log('🏠 LOGOUT MODAL - Redirecting to homepage');
+      console.log('🏠 LOGOUT MODAL - Redirecting to login page');
       
-      // Force redirect to homepage immediately after logout
-      window.location.href = '/';
+      // Add a small delay to ensure state is cleared, then redirect to login
+      setTimeout(() => {
+        setLocation('/login');
+      }, 100);
     } catch (error) {
       console.error('💥 LOGOUT MODAL ERROR:', error);
       
       // Still redirect even if there's an error
-      window.location.href = '/';
+      setTimeout(() => {
+        setLocation('/login');
+      }, 100);
     } finally {
       console.log('🔓 LOGOUT MODAL - Resetting execution flag');
       isExecuting.current = false;

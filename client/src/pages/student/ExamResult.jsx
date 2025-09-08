@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useLocation } from 'wouter';
+import { useParams } from 'wouter';
+import { useLocation } from 'wouter';
 import { useSelector } from 'react-redux';
 import { motion } from 'framer-motion';
 import { 
@@ -42,11 +43,20 @@ const ExamResult = () => {
       setLoading(true);
       
       const [resultRes, comparativeRes] = await Promise.all([
-        studentExamAPI.getExamResult(examId, user._id),
+        studentExamAPI.getExamResult(examId, user.email),
         studentAnalyticsAPI.getComparativeAnalysis(user._id, examId).catch(() => null)
       ]);
 
       setResult(resultRes.data);
+      
+      // Check if results should be hidden
+      if (resultRes.showResults === false) {
+        toast({
+          title: "Keep Trying!",
+          description: resultRes.data.message || "Results are not available for this exam.",
+          variant: "default",
+        });
+      }
       setComparative(comparativeRes?.data);
 
     } catch (error) {
@@ -151,7 +161,7 @@ const ExamResult = () => {
         <div className="flex items-center gap-4 mb-8">
           <Button 
             variant="outline" 
-            onClick={() => navigate('/student/dashboard')}
+            onClick={() => setLocation('/student/dashboard')}
             className="flex items-center gap-2"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -299,60 +309,6 @@ const ExamResult = () => {
           </motion.div>
         </div>
 
-        {/* Comparative Analysis */}
-        {comparative && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="mb-8"
-          >
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
-                  Class Comparison
-                </CardTitle>
-                <CardDescription>
-                  See how you performed compared to your classmates
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600 mb-2">
-                      {comparative.studentScore}%
-                    </div>
-                    <p className="text-gray-600">Your Score</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600 mb-2">
-                      {comparative.classAverage}%
-                    </div>
-                    <p className="text-gray-600">Class Average</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-600 mb-2">
-                      #{comparative.rank}
-                    </div>
-                    <p className="text-gray-600">Your Rank</p>
-                  </div>
-                </div>
-                
-                <div className="mt-6">
-                  <div className="flex justify-between text-sm text-gray-600 mb-2">
-                    <span>Percentile</span>
-                    <span>{comparative.percentile}th percentile</span>
-                  </div>
-                  <Progress value={comparative.percentile} className="h-2" />
-                  <p className="text-sm text-gray-500 mt-2">
-                    You scored better than {comparative.percentile}% of students
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
 
         {/* Exam Details */}
         <motion.div

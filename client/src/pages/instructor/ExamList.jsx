@@ -55,10 +55,10 @@ const ExamList = () => {
   const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
-    if (user?.id) {
+    if (user?.userId || user?.id) {
       loadExams();
     }
-  }, [user?.id, activeTab, searchTerm, currentPage]);
+  }, [user?.userId, user?.id, activeTab, searchTerm, currentPage]);
 
   const loadExams = async () => {
     try {
@@ -69,7 +69,8 @@ const ExamList = () => {
         search: searchTerm
       });
       
-      const response = await api.get(`/api/exams/instructor/${user.id}?${params}`);
+      console.log('Loading exams for user:', user.userId || user.id);
+      const response = await api.get(`/api/exams/instructor/${user.userId || user.id}?${params}`);
       dispatch({ type: 'exam/fetchExams/fulfilled', payload: response.data });
     } catch (error) {
       console.error('Error loading exams:', error);

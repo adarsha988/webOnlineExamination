@@ -174,14 +174,6 @@ const AdminAnalytics = () => {
           color="text-green-600"
         />
         <StatCard
-          icon={Share2}
-          title="Shared Banks"
-          value={analytics.overview.totalSharedBanks}
-          subtitle="Collaborative question banks"
-          trend={analytics.overview.sharedBankGrowth}
-          color="text-purple-600"
-        />
-        <StatCard
           icon={CheckCircle}
           title="Approval Rate"
           value={`${analytics.overview.approvalRate}%`}
@@ -327,12 +319,6 @@ const AdminAnalytics = () => {
                   title="Questions"
                   value={departmentAnalytics.overview.totalQuestions}
                   color="text-green-600"
-                />
-                <StatCard
-                  icon={Share2}
-                  title="Shared Banks"
-                  value={departmentAnalytics.overview.sharedBanks}
-                  color="text-purple-600"
                 />
                 <StatCard
                   icon={Target}
@@ -565,7 +551,6 @@ const AdminAnalytics = () => {
                   <Tooltip />
                   <Line type="monotone" dataKey="questions" stroke="#8884d8" strokeWidth={2} name="Questions" />
                   <Line type="monotone" dataKey="instructors" stroke="#82ca9d" strokeWidth={2} name="Instructors" />
-                  <Line type="monotone" dataKey="sharedBanks" stroke="#ffc658" strokeWidth={2} name="Shared Banks" />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
@@ -588,7 +573,7 @@ const AdminAnalytics = () => {
                     <span className="font-semibold text-blue-600">+8%</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Shared Banks</span>
+                    <span className="text-sm text-gray-600">Question Banks</span>
                     <span className="font-semibold text-purple-600">+12%</span>
                   </div>
                 </div>

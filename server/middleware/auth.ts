@@ -47,3 +47,16 @@ export const authorizeRole = (roles: string[]) => {
     next();
   };
 };
+
+// Convenience middleware for common role checks
+export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
+  return authorizeRole(['admin'])(req, res, next);
+};
+
+export const requireInstructor = (req: Request, res: Response, next: NextFunction) => {
+  return authorizeRole(['instructor', 'admin'])(req, res, next);
+};
+
+export const requireStudent = (req: Request, res: Response, next: NextFunction) => {
+  return authorizeRole(['student', 'instructor', 'admin'])(req, res, next);
+};

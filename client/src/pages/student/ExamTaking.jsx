@@ -34,9 +34,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { studentExamAPI } from '@/api/studentExams';
+import ProctoredExamInterface from '@/components/exam/ProctoredExamInterface';
 
 const ExamTaking = () => {
-  const { examId } = useParams();
+  const { id: examId } = useParams();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useSelector((state) => state.auth);
@@ -412,6 +413,51 @@ const ExamTaking = () => {
   const answeredCount = Object.keys(answers).filter(key => 
     answers[key] !== undefined && answers[key] !== null && answers[key] !== ''
   ).length;
+
+  // Check if AI proctoring is enabled for this exam
+  const isProctoringEnabled = examSession.examId.aiProctoringEnabled || examSession.examId.proctoring?.enabled;
+
+  // If proctoring is enabled, use the ProctoredExamInterface
+  if (isProctoringEnabled) {
+    return (
+      <ProctoredExamInterface
+        exam={examSession.examId}
+        questions={examSession.examId.questions}
+        answers={answers}
+        attemptId={examSession._id}
+        onAnswerChange={handleAnswerChange}
+        onSubmit={async (finalAnswers, status = 'submitted') => {
+          try {
+            const formattedAnswers = Object.entries(finalAnswers).map(([questionId, answer]) => ({
+              questionId,
+              answer,
+              timeSpent: Math.floor((Date.now() - questionStartTime) / 1000)
+            }));
+
+            await studentExamAPI.submitExam(examId, user._id, formattedAnswers, status);
+            
+            toast({
+              title: status === 'terminated' ? "Exam Terminated" : "Exam Submitted",
+              description: status === 'terminated' ? 
+                "Your exam has been terminated due to policy violations." :
+                "Your exam has been submitted successfully!",
+              variant: status === 'terminated' ? "destructive" : "default"
+            });
+            
+            setLocation(`/student/exam/${examId}/result`);
+          } catch (error) {
+            console.error('Submit failed:', error);
+            toast({
+              title: "Error",
+              description: error.response?.data?.message || "Failed to submit exam",
+              variant: "destructive",
+            });
+            throw error;
+          }
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -1,6 +1,5 @@
 import express from 'express';
 import Question from '../models/question.model.js';
-import SharedBank from '../models/sharedBank.model.js';
 import User from '../models/user.model.js';
 import Activity from '../models/activity.model.js';
 import { authenticateToken } from '../middleware/auth.ts';
@@ -87,14 +86,7 @@ router.get('/instructor/:id', authenticateToken, requireInstructorOrAdmin, async
       }
     ]);
 
-    // Shared banks owned or collaborated
-    const sharedBanks = await SharedBank.find({
-      $or: [
-        { owners: id },
-        { 'collaborators.userId': id }
-      ],
-      isActive: true
-    }).populate('owners', 'name email').select('name subject stats owners collaborators');
+    // No shared banks - removed functionality
 
     // Question creation trends over time
     const creationTrends = await Question.aggregate([
@@ -158,13 +150,7 @@ router.get('/instructor/:id', authenticateToken, requireInstructorOrAdmin, async
       shared: {
         ...shared,
         total: shared.approved + shared.pending + shared.rejected,
-        banks: sharedBanks.map(bank => ({
-          id: bank._id,
-          name: bank.name,
-          subject: bank.subject,
-          isOwner: bank.owners.some(owner => owner._id.toString() === id),
-          stats: bank.stats
-        }))
+        banks: []
       },
       trends: creationTrends,
       examUsage,
@@ -359,11 +345,7 @@ router.get('/department/:deptId', authenticateToken, async (req, res) => {
       { $sort: { questionCount: -1 } }
     ]);
 
-    // Department shared banks
-    const departmentSharedBanks = await SharedBank.find({
-      departmentId: deptId,
-      isActive: true
-    }).populate('owners', 'name email').select('name subject stats owners collaborators createdAt');
+    // No department shared banks - removed functionality
 
     // Activity trends
     const activityTrends = await Question.aggregate([
@@ -380,20 +362,12 @@ router.get('/department/:deptId', authenticateToken, async (req, res) => {
       { $sort: { '_id.date': 1 } }
     ]);
 
-    // Collaboration metrics
-    const collaborationMetrics = await SharedBank.aggregate([
-      { $match: { departmentId: deptId, isActive: true } },
-      {
-        $group: {
-          _id: null,
-          totalBanks: { $sum: 1 },
-          totalCollaborators: { $sum: '$stats.totalCollaborators' },
-          avgCollaboratorsPerBank: { $avg: '$stats.totalCollaborators' },
-          totalQuestions: { $sum: '$stats.totalQuestions' },
-          totalApproved: { $sum: '$stats.approvedQuestions' }
-        }
-      }
-    ]);
+    // No collaboration metrics - removed shared bank functionality
+    const collaboration = {
+      totalBanks: 0,
+      totalCollaborators: 0,
+      avgCollaboratorsPerBank: 0
+    };
 
     const stats = departmentStats[0] || {
       totalQuestions: 0,
@@ -403,13 +377,6 @@ router.get('/department/:deptId', authenticateToken, async (req, res) => {
       pendingShared: 0
     };
 
-    const collaboration = collaborationMetrics[0] || {
-      totalBanks: 0,
-      totalCollaborators: 0,
-      avgCollaboratorsPerBank: 0,
-      totalQuestions: 0,
-      totalApproved: 0
-    };
 
     res.json({
       departmentId: deptId,
@@ -422,7 +389,7 @@ router.get('/department/:deptId', authenticateToken, async (req, res) => {
       },
       instructorLeaderboard,
       subjectDistribution,
-      sharedBanks: departmentSharedBanks,
+      sharedBanks: [], // No shared banks
       activityTrends,
       collaboration
     });
